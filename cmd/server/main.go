@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -162,6 +163,11 @@ func main() {
 	var serverAddress string
 	flag.StringVar(&serverAddress, "a", "localhost:8080", "HTTP server endpoint address")
 	flag.Parse()
+
+	envServerAddress := os.Getenv("ADDRESS")
+	if envServerAddress != "" {
+		serverAddress = envServerAddress
+	}
 
 	storage := NewMemStorage()
 
