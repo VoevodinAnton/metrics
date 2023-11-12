@@ -78,11 +78,12 @@ func (s *service) sendMetrics() error {
 		}
 
 		url := fmt.Sprintf("http://%s/update/%s/%s/%f", s.cfg.Server, metricType, metricName, metricValue)
-		_, err = http.Post(url, "text/plain", nil)
+		resp, err := http.Get(url)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
+		resp.Body.Close()
 	}
 
 	for metricName, metricType := range s.cfg.CustomMetrics {
@@ -95,11 +96,12 @@ func (s *service) sendMetrics() error {
 				continue
 			}
 			url = fmt.Sprintf("http://%s/update/%s/%s/%f", s.cfg.Server, metricType, metricName, metricValue)
-			_, err = http.Post(url, "text/plain", nil)
+			resp, err := http.Get(url)
 			if err != nil {
 				log.Println(err)
 				continue
 			}
+			resp.Body.Close()
 		case "counter":
 			metricValue, err := s.metricRepo.GetCounterMetric(metricName)
 			if err != nil {
@@ -107,11 +109,12 @@ func (s *service) sendMetrics() error {
 				continue
 			}
 			url = fmt.Sprintf("http://%s/update/%s/%s/%d", s.cfg.Server, metricType, metricName, metricValue)
-			_, err = http.Post(url, "text/plain", nil)
+			resp, err := http.Get(url)
 			if err != nil {
 				log.Println(err)
 				continue
 			}
+			resp.Body.Close()
 			s.metricRepo.ResetCounterMetric(metricName)
 		}
 	}

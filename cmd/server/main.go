@@ -1,12 +1,32 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/go-chi/chi"
 )
+
+var pageTemplate = template.Must(template.New("metrics").Parse(`
+<html>
+<head>
+  <title>Metric List</title>
+</head>
+<body>
+  <h1>Metric List</h1>
+  <ul>
+    {{range $name, $metric := .}}
+      <li><strong>{{$name}}:</strong> {{$metric.Value}}</li>
+    {{end}}
+  </ul>
+</body>
+</html>
+`))
 
 type MetricType int
 
@@ -28,6 +48,7 @@ type MemStorage struct {
 type MetricStorage interface {
 	GetMetric(name string) (Metric, bool)
 	UpdateMetric(name string, metric Metric)
+	GetMetrics() map[string]Metric
 }
 
 func NewMemStorage() *MemStorage {
@@ -41,6 +62,12 @@ func (m *MemStorage) GetMetric(name string) (Metric, bool) {
 	defer m.mu.Unlock()
 	val, ok := m.metrics[name]
 	return val, ok
+}
+
+func (m *MemStorage) GetMetrics() map[string]Metric {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.metrics
 }
 
 func (m *MemStorage) UpdateMetric(name string, metric Metric) {
@@ -59,17 +86,11 @@ func (m *MemStorage) UpdateMetric(name string, metric Metric) {
 	}
 }
 
-func handleUpdate(storage MetricStorage) http.HandlerFunc {
+func handleUpdateMetric(storage MetricStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		parts := strings.Split(r.URL.Path, "/")
-		if len(parts) != 5 {
-			http.Error(w, "Invalid URL", http.StatusNotFound)
-			return
-		}
-
-		metricType := parts[2]
-		metricName := parts[3]
-		metricValue := parts[4]
+		metricType := strings.ToLower(chi.URLParam(r, "metricType"))
+		metricName := chi.URLParam(r, "metricName")
+		metricValue := chi.URLParam(r, "metricValue")
 
 		value, err := strconv.ParseFloat(metricValue, 64)
 		if err != nil {
@@ -95,12 +116,56 @@ func handleUpdate(storage MetricStorage) http.HandlerFunc {
 	}
 }
 
+func handleGetMetric(storage MetricStorage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		metricType := strings.ToLower(chi.URLParam(r, "metricType"))
+		metricName := strings.ToLower(chi.URLParam(r, "metricName"))
+
+		var metricTypeVal MetricType
+		switch metricType {
+		case "gauge":
+			metricTypeVal = Gauge
+		case "counter":
+			metricTypeVal = Counter
+		default:
+			http.Error(w, "Invalid metric type", http.StatusBadRequest)
+			return
+		}
+
+		_ = metricTypeVal
+
+		metric, ok := storage.GetMetric(metricName)
+		if !ok {
+			http.Error(w, "Metric not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("content-type", "text/plain; charset=utf-8")
+		w.Write([]byte(fmt.Sprintf("%f", metric.Value)))
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func handleGetMetrics(storage *MemStorage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var pageBuffer bytes.Buffer
+		pageTemplate.Execute(&pageBuffer, storage.GetMetrics())
+
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		w.Write(pageBuffer.Bytes())
+	}
+}
+
 func main() {
 	storage := NewMemStorage()
 
-	http.HandleFunc("/update/", handleUpdate(storage))
+	r := chi.NewRouter()
+	r.Get("/update/{metricType}/{metricName}/{metricValue}", handleUpdateMetric(storage))
+	r.Get("/value/{metricType}/{metricName}", handleGetMetric(storage))
+	r.Get("/", handleGetMetrics(storage))
 
-	err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		fmt.Println("Error starting server:", err)
 	}
