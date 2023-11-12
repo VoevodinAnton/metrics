@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/VoevodinAnton/metrics/internal/app/agent/repository"
@@ -39,6 +40,7 @@ func (s *Storage) GetCounterMetric(name string) (int64, error) {
 
 	value, ok := s.counterMetrics[name]
 	if !ok {
+		fmt.Println(value)
 		return 0, repository.ErrMetricNotFound
 	}
 	return value, nil
@@ -50,6 +52,7 @@ func (s *Storage) GetGaugeMetric(name string) (float64, error) {
 
 	value, ok := s.gaugeMetrics[name]
 	if !ok {
+		fmt.Println(name)
 		return 0, repository.ErrMetricNotFound
 	}
 	return value, nil

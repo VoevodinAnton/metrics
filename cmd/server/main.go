@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -158,6 +159,10 @@ func handleGetMetrics(storage *MemStorage) http.HandlerFunc {
 }
 
 func main() {
+	var serverAddress string
+	flag.StringVar(&serverAddress, "a", "localhost:8080", "HTTP server endpoint address")
+	flag.Parse()
+
 	storage := NewMemStorage()
 
 	r := chi.NewRouter()
@@ -165,7 +170,7 @@ func main() {
 	r.Get("/value/{metricType}/{metricName}", handleGetMetric(storage))
 	r.Get("/", handleGetMetrics(storage))
 
-	err := http.ListenAndServe(":8080", r)
+	err := http.ListenAndServe(serverAddress, r)
 	if err != nil {
 		fmt.Println("Error starting server:", err)
 	}
