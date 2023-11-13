@@ -32,7 +32,7 @@ func NewRouter(cfg *config.Config, service Service) *Router {
 		middleware.Recoverer,
 	)
 
-	r.Get("/update/{metricType}/{metricName}/{metricValue}", h.UpdateMetricHandler)
+	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateMetricHandler)
 	r.Get("/value/{metricType}/{metricName}", h.GetMetricHandler)
 	r.Get("/", h.GetMetricsHandler)
 
