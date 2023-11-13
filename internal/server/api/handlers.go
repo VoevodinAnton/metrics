@@ -74,9 +74,9 @@ func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain; charset=utf-8")
 	if metricTypeVal == models.Gauge {
-		_, _ = w.Write([]byte(fmt.Sprintf("%f", metric.Value)))
+		fmt.Fprint(w, metric.Value)
 	} else if metricTypeVal == models.Counter {
-		_, _ = w.Write([]byte(fmt.Sprintf("%d", int64(metric.Value))))
+		fmt.Fprint(w, int64(metric.Value))
 	}
 
 	w.WriteHeader(http.StatusOK)
