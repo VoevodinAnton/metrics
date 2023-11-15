@@ -43,5 +43,5 @@ func NewRouter(cfg *config.Config, service Service) *Router {
 }
 
 func (r *Router) ServeRouter() error {
-	return http.ListenAndServe(r.cfg.Server.Address, r.r) // nolint: wrapheck
+	return http.ListenAndServe(r.cfg.Server.Address, r.r) // nolint: wrapcheck
 }

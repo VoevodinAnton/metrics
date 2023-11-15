@@ -29,13 +29,13 @@ func (s *Service) GetMetric(req *models.MetricReq) (*models.MetricResp, error) {
 	case models.Gauge:
 		gauge, err := s.store.GetGauge(req.Name)
 		if err != nil {
-			return nil, err // nolint: wrapheck
+			return nil, err // nolint: wrapcheck
 		}
 		metricResp = gaugeModelToAPI(gauge)
 	case models.Counter:
 		counter, err := s.store.GetCounter(req.Name)
 		if err != nil {
-			return nil, err // nolint: wrapheck
+			return nil, err // nolint: wrapcheck
 		}
 		metricResp = counterModelToAPI(counter)
 	}
@@ -48,12 +48,12 @@ func (s *Service) UpdateMetric(req *models.MetricReq) error {
 	case models.Gauge:
 		err := s.store.UpdateGauge(gaugeAPIToModel(req))
 		if err != nil {
-			return err // nolint: wrapheck
+			return err // nolint: wrapcheck
 		}
 	case models.Counter:
 		err := s.store.UpdateCounter(counterAPIToModel(req))
 		if err != nil {
-			return err // nolint: wrapheck
+			return err // nolint: wrapcheck
 		}
 	}
 
@@ -64,11 +64,11 @@ func (s *Service) GetMetrics() ([]*models.MetricResp, error) {
 	var resp []*models.MetricResp
 	counterMetrics, err := s.store.GetCounterMetrics()
 	if err != nil {
-		return nil, err // nolint: wrapheck
+		return nil, err // nolint: wrapcheck
 	}
 	gaugeMetrics, err := s.store.GetGaugeMetrics()
 	if err != nil {
-		return nil, err // nolint: wrapheck
+		return nil, err // nolint: wrapcheck
 	}
 	for _, v := range counterMetrics {
 		resp = append(resp, counterModelToAPI(v))
