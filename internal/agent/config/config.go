@@ -7,16 +7,17 @@ import (
 	"time"
 )
 
+const (
+	defaultPollInterval   = 2
+	defaultReportInterval = 10
+)
+
 type Config struct {
-	Server         Server
+	CustomMetrics  map[string]string
+	RuntimeMetrics map[string]string
+	ServerAddress  string
 	PollInterval   time.Duration
 	ReportInterval time.Duration
-	RuntimeMetrics map[string]string
-	CustomMetrics  map[string]string
-}
-
-type Server struct {
-	Address string
 }
 
 func InitConfig() *Config {
@@ -28,8 +29,8 @@ func InitConfig() *Config {
 	envPollInterval := os.Getenv("POLL_INTERVAL")
 
 	flag.StringVar(&serverAddress, "a", "localhost:8080", "HTTP server endpoint address")
-	flag.IntVar(&reportInterval, "r", 10, "Report interval in seconds")
-	flag.IntVar(&pollInterval, "p", 2, "Poll interval in seconds")
+	flag.IntVar(&reportInterval, "r", defaultReportInterval, "Report interval in seconds")
+	flag.IntVar(&pollInterval, "p", defaultPollInterval, "Poll interval in seconds")
 	flag.Parse()
 
 	if envServerAddress != "" {
@@ -43,9 +44,7 @@ func InitConfig() *Config {
 	}
 
 	return &Config{
-		Server: Server{
-			Address: serverAddress,
-		},
+		ServerAddress:  serverAddress,
 		PollInterval:   time.Duration(pollInterval) * time.Second,
 		ReportInterval: time.Duration(reportInterval) * time.Second,
 		RuntimeMetrics: map[string]string{

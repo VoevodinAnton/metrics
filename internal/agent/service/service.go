@@ -89,7 +89,7 @@ func (s *service) sendMetrics() error {
 			continue
 		}
 
-		url := fmt.Sprintf("http://%s/update/%s/%s/%f", s.cfg.Server.Address, metricType, metricName, metric.Value)
+		url := fmt.Sprintf("http://%s/update/%s/%s/%f", s.cfg.ServerAddress, metricType, metricName, metric.Value)
 		resp, err := http.Get(url)
 		if err != nil {
 			log.Println(err)
@@ -107,7 +107,7 @@ func (s *service) sendMetrics() error {
 				log.Println(err)
 				continue
 			}
-			url = fmt.Sprintf("http://%s/update/%s/%s/%f", s.cfg.Server.Address, metricType, metricName, metric.Value)
+			url = fmt.Sprintf("http://%s/update/%s/%s/%f", s.cfg.ServerAddress, metricType, metricName, metric.Value)
 			resp, err := http.Get(url)
 			if err != nil {
 				log.Println(err)
@@ -120,7 +120,7 @@ func (s *service) sendMetrics() error {
 				log.Println(err)
 				continue
 			}
-			url = fmt.Sprintf("http://%s/update/%s/%s/%d", s.cfg.Server.Address, metricType, metricName, metric.Value)
+			url = fmt.Sprintf("http://%s/update/%s/%s/%d", s.cfg.ServerAddress, metricType, metricName, metric.Value)
 			resp, err := http.Get(url)
 			if err != nil {
 				log.Println(err)

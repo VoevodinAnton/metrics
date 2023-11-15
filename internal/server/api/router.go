@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/VoevodinAnton/metrics/internal/models"
@@ -8,6 +9,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
+)
+
+var (
+	ErrInvalidMetricType  = errors.New("invalid metric type")
+	ErrInvalidMetricValue = errors.New("invalid metric value")
 )
 
 type Service interface {
@@ -43,5 +49,5 @@ func NewRouter(cfg *config.Config, service Service) *Router {
 }
 
 func (r *Router) ServeRouter() error {
-	return http.ListenAndServe(r.cfg.Server.Address, r.r) // nolint: wrapcheck
+	return http.ListenAndServe(r.cfg.Server.Address, r.r) //nolint: wrapcheck
 }

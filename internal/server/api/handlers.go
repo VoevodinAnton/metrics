@@ -14,6 +14,10 @@ import (
 const (
 	gauge   = "gauge"
 	counter = "counter"
+
+	metricTypeURLParam  = "metricType"
+	metricNameURLParam  = "metricName"
+	metricValueURLParam = "metricValue"
 )
 
 type Handler struct {
@@ -21,13 +25,13 @@ type Handler struct {
 }
 
 func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
-	metricType := chi.URLParam(r, "metricType")
-	metricName := chi.URLParam(r, "metricName")
-	metricValue := chi.URLParam(r, "metricValue")
+	metricType := chi.URLParam(r, metricTypeURLParam)
+	metricName := chi.URLParam(r, metricNameURLParam)
+	metricValue := chi.URLParam(r, metricValueURLParam)
 
 	value, err := strconv.ParseFloat(metricValue, 64)
 	if err != nil {
-		http.Error(w, "Invalid metric value", http.StatusBadRequest)
+		http.Error(w, ErrInvalidMetricValue.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -38,7 +42,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	case counter:
 		metricTypeVal = models.Counter
 	default:
-		http.Error(w, "Invalid metric type", http.StatusBadRequest)
+		http.Error(w, ErrInvalidMetricType.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -52,8 +56,8 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
-	metricType := chi.URLParam(r, "metricType")
-	metricName := chi.URLParam(r, "metricName")
+	metricType := chi.URLParam(r, metricTypeURLParam)
+	metricName := chi.URLParam(r, metricNameURLParam)
 
 	var metricTypeVal models.MetricType
 	switch metricType {
@@ -62,7 +66,7 @@ func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 	case counter:
 		metricTypeVal = models.Counter
 	default:
-		http.Error(w, "Invalid metric type", http.StatusBadRequest)
+		http.Error(w, ErrInvalidMetricType.Error(), http.StatusBadRequest)
 		return
 	}
 
