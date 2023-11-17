@@ -47,13 +47,11 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrInvalidMetricType.Error(), http.StatusBadRequest)
 		return
 	}
-
 	if err != nil {
 		http.Error(w, ErrInvalidMetricValue.Error(), http.StatusBadRequest)
 		return
 	}
-
-	err = h.Service.UpdateMetric(&models.Metric{Name: metricName, Type: metricTypeVal, Value: metricVal})
+	err = h.Service.UpdateMetric(models.Metric{Name: metricName, Type: metricTypeVal, Value: metricVal})
 	if err != nil {
 		http.Error(w, "Failed update metric", http.StatusInternalServerError)
 		return
@@ -76,13 +74,12 @@ func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, ErrInvalidMetricType.Error(), http.StatusBadRequest)
 		return
 	}
-
-	metric, err := h.Service.GetMetric(&models.Metric{Name: metricName, Type: metricTypeVal})
+	metricReq := models.Metric{Name: metricName, Type: metricTypeVal}
+	metric, err := h.Service.GetMetric(&metricReq)
 	if err != nil {
 		http.Error(w, "Metric not found", http.StatusNotFound)
 		return
 	}
-
 	w.Header().Set(ContentTypeHeader, ContentTypeText)
 	fmt.Fprint(w, metric.Value)
 	w.WriteHeader(http.StatusOK)

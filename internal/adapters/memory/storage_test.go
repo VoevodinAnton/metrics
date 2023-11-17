@@ -13,7 +13,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		CounterMetrics map[string]*models.Metric
 	}
 	type args struct {
-		Metric *models.Metric
+		Metric models.Metric
 	}
 	tests := []struct {
 		name   string
@@ -28,7 +28,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 				CounterMetrics: make(map[string]*models.Metric),
 			},
 			args: args{
-				Metric: &models.Metric{
+				Metric: models.Metric{
 					Name:  "SomeGaugeMetric",
 					Type:  0,
 					Value: 10.0,
@@ -43,7 +43,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 				CounterMetrics: make(map[string]*models.Metric),
 			},
 			args: args{
-				Metric: &models.Metric{
+				Metric: models.Metric{
 					Name:  "SomeGaugeMetric",
 					Type:  0,
 					Value: -10.0,
@@ -58,7 +58,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 				CounterMetrics: make(map[string]*models.Metric),
 			},
 			args: args{
-				Metric: &models.Metric{
+				Metric: models.Metric{
 					Name:  "SomeGaugeMetric",
 					Type:  0,
 					Value: 0.0,
@@ -86,7 +86,7 @@ func TestStorage_UpdateCounter(t *testing.T) {
 		CounterMetrics map[string]*models.Metric
 	}
 	type args struct {
-		Metric *models.Metric
+		Metric models.Metric
 	}
 	tests := []struct {
 		name   string
@@ -101,10 +101,10 @@ func TestStorage_UpdateCounter(t *testing.T) {
 				CounterMetrics: make(map[string]*models.Metric),
 			},
 			args: args{
-				Metric: &models.Metric{
+				Metric: models.Metric{
 					Name:  "SomeCounterMetric",
 					Type:  1,
-					Value: 10,
+					Value: int64(10),
 				},
 			},
 			want: 10,
@@ -116,10 +116,10 @@ func TestStorage_UpdateCounter(t *testing.T) {
 				CounterMetrics: make(map[string]*models.Metric),
 			},
 			args: args{
-				Metric: &models.Metric{
+				Metric: models.Metric{
 					Name:  "SomeCounterMetric",
 					Type:  1,
-					Value: 0,
+					Value: int64(0),
 				},
 			},
 			want: 0,

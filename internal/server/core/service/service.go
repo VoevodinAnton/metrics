@@ -6,9 +6,9 @@ import (
 )
 
 type Store interface {
-	UpdateGauge(metric *models.Metric) error
+	UpdateGauge(metric models.Metric) error
 	GetGauge(name string) (*models.Metric, error)
-	UpdateCounter(metric *models.Metric) error
+	UpdateCounter(metric models.Metric) error
 	GetCounter(name string) (*models.Metric, error)
 	GetCounterMetrics() (map[string]*models.Metric, error)
 	GetGaugeMetrics() (map[string]*models.Metric, error)
@@ -44,7 +44,7 @@ func (s *Service) GetMetric(req *models.Metric) (*models.Metric, error) {
 	return metricResp, nil
 }
 
-func (s *Service) UpdateMetric(req *models.Metric) error {
+func (s *Service) UpdateMetric(req models.Metric) error {
 	switch req.Type {
 	case models.Gauge:
 		err := s.store.UpdateGauge(req)

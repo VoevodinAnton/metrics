@@ -26,10 +26,10 @@ func NewStorage() *Storage {
 	}
 }
 
-func (s *Storage) UpdateGauge(metric *models.Metric) error {
+func (s *Storage) UpdateGauge(metric models.Metric) error {
 	s.Lock()
 	defer s.Unlock()
-	s.gaugeMetrics[metric.Name] = metric
+	s.gaugeMetrics[metric.Name] = &metric
 
 	return nil
 }
@@ -45,12 +45,12 @@ func (s *Storage) GetGauge(name string) (*models.Metric, error) {
 	return value, nil
 }
 
-func (s *Storage) UpdateCounter(update *models.Metric) error {
+func (s *Storage) UpdateCounter(update models.Metric) error {
 	s.Lock()
 	defer s.Unlock()
 	metric, ok := s.counterMetrics[update.Name]
 	if !ok {
-		metric = update
+		metric = &update
 	} else {
 		value, _ := metric.Value.(int64)
 		if newValue, ok := update.Value.(int64); ok {
@@ -91,7 +91,7 @@ func (s *Storage) ResetCounter(name string) error {
 	s.Lock()
 	defer s.Unlock()
 
-	s.counterMetrics[name] = &models.Metric{}
+	s.counterMetrics[name].Value = int64(0)
 
 	return nil
 }

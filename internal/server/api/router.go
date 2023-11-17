@@ -7,7 +7,6 @@ import (
 	"github.com/VoevodinAnton/metrics/internal/server/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/render"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +17,7 @@ var (
 
 type Service interface {
 	GetMetric(req *models.Metric) (*models.Metric, error)
-	UpdateMetric(req *models.Metric) error
+	UpdateMetric(req models.Metric) error
 	GetMetrics() ([]*models.Metric, error)
 }
 
@@ -34,7 +33,6 @@ func NewRouter(cfg *config.Config, service Service) *Router {
 	r := chi.NewRouter()
 
 	r.Use(
-		render.SetContentType(render.ContentTypeJSON), // forces Content-type
 		middleware.Recoverer,
 	)
 

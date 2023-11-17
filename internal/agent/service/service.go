@@ -14,9 +14,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	ContentTypeText = "text/plain"
+)
+
 type Store interface {
-	UpdateGauge(metric *models.Metric) error
-	UpdateCounter(metric *models.Metric) error
+	UpdateGauge(metric models.Metric) error
+	UpdateCounter(metric models.Metric) error
 	GetCounterMetrics() (map[string]*models.Metric, error)
 	GetGaugeMetrics() (map[string]*models.Metric, error)
 
@@ -65,12 +69,12 @@ func (s *service) updateMetrics() {
 
 	for metricName := range s.cfg.RuntimeMetrics {
 		v := memStatsValue.FieldByName(metricName)
-		var gaugeMetric *models.Metric
+		var gaugeMetric models.Metric
 		if v.CanUint() {
-			gaugeMetric = &models.Metric{Name: metricName, Type: models.Counter, Value: float64(v.Uint())}
+			gaugeMetric = models.Metric{Name: metricName, Type: models.Counter, Value: float64(v.Uint())}
 		}
 		if v.CanFloat() {
-			gaugeMetric = &models.Metric{Name: metricName, Type: models.Gauge, Value: v.Float()}
+			gaugeMetric = models.Metric{Name: metricName, Type: models.Gauge, Value: v.Float()}
 		}
 
 		err := s.store.UpdateGauge(gaugeMetric)
@@ -80,8 +84,8 @@ func (s *service) updateMetrics() {
 		}
 	}
 
-	_ = s.store.UpdateGauge(&models.Metric{Name: "RandomValue", Type: models.Gauge, Value: getRandomValue()})
-	_ = s.store.UpdateCounter(&models.Metric{Name: "PollCount", Type: models.Counter, Value: int64(1)})
+	_ = s.store.UpdateGauge(models.Metric{Name: "RandomValue", Type: models.Gauge, Value: getRandomValue()})
+	_ = s.store.UpdateCounter(models.Metric{Name: "PollCount", Type: models.Counter, Value: int64(1)})
 }
 
 func (s *service) SendCounterMetrics() error {
@@ -118,9 +122,12 @@ func (s *service) SendGaugeMetrics() error {
 }
 
 func (s *service) sendMetrics(url string) error {
-	resp, err := http.Get(url)
+	resp, err := http.Post(url, ContentTypeText, nil)
 	if err != nil {
 		return errors.Wrap(err, "http.Get")
+	}
+	if resp.StatusCode > http.StatusBadRequest {
+		return errors.Wrap(errors.New("status code > 400"), resp.Status)
 	}
 	if err = resp.Body.Close(); err != nil {
 		return errors.Wrap(err, "body.Close")
