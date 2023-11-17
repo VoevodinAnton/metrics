@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/VoevodinAnton/metrics/internal/models"
+	"github.com/pkg/errors"
 )
 
 type Store interface {
@@ -29,13 +30,13 @@ func (s *Service) GetMetric(req *models.MetricReq) (*models.MetricResp, error) {
 	case models.Gauge:
 		gauge, err := s.store.GetGauge(req.Name)
 		if err != nil {
-			return nil, err //nolint: wrapcheck
+			return nil, errors.Wrap(err, "GetGauge")
 		}
 		metricResp = gaugeModelToAPI(gauge)
 	case models.Counter:
 		counter, err := s.store.GetCounter(req.Name)
 		if err != nil {
-			return nil, err //nolint: wrapcheck
+			return nil, errors.Wrap(err, "GetCounter")
 		}
 		metricResp = counterModelToAPI(counter)
 	}
@@ -48,12 +49,12 @@ func (s *Service) UpdateMetric(req *models.MetricReq) error {
 	case models.Gauge:
 		err := s.store.UpdateGauge(gaugeAPIToModel(req))
 		if err != nil {
-			return err //nolint: wrapcheck
+			return errors.Wrap(err, "UpdateGauge")
 		}
 	case models.Counter:
 		err := s.store.UpdateCounter(counterAPIToModel(req))
 		if err != nil {
-			return err //nolint: wrapcheck
+			return errors.Wrap(err, "UpdateCounter")
 		}
 	}
 
@@ -61,15 +62,15 @@ func (s *Service) UpdateMetric(req *models.MetricReq) error {
 }
 
 func (s *Service) GetMetrics() ([]*models.MetricResp, error) {
-	var resp []*models.MetricResp
 	counterMetrics, err := s.store.GetCounterMetrics()
 	if err != nil {
-		return nil, err //nolint: wrapcheck
+		return nil, errors.Wrap(err, "GetCounterMetrics")
 	}
 	gaugeMetrics, err := s.store.GetGaugeMetrics()
 	if err != nil {
-		return nil, err //nolint: wrapcheck
+		return nil, errors.Wrap(err, "GetGaugeMetrics")
 	}
+	resp := make([]*models.MetricResp, 0, len(counterMetrics)+len(gaugeMetrics))
 	for _, v := range counterMetrics {
 		resp = append(resp, counterModelToAPI(v))
 	}
@@ -108,6 +109,6 @@ func gaugeModelToAPI(m *models.GaugeMetric) *models.MetricResp {
 	return &models.MetricResp{
 		Name:  m.Name,
 		Type:  m.Type,
-		Value: float64(m.Value),
+		Value: m.Value,
 	}
 }

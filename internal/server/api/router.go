@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/VoevodinAnton/metrics/internal/models"
@@ -9,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -49,5 +49,6 @@ func NewRouter(cfg *config.Config, service Service) *Router {
 }
 
 func (r *Router) ServeRouter() error {
-	return http.ListenAndServe(r.cfg.Server.Address, r.r) //nolint: wrapcheck
+	err := http.ListenAndServe(r.cfg.Server.Address, r.r)
+	return errors.Wrap(err, "http.ListenAndServe")
 }

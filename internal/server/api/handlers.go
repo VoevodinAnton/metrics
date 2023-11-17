@@ -18,6 +18,10 @@ const (
 	metricTypeURLParam  = "metricType"
 	metricNameURLParam  = "metricName"
 	metricValueURLParam = "metricValue"
+
+	ContentTypeHeader = "Content-Type"
+	ContentTypeText   = "text/plain; charset=utf-8"
+	ContentTypeHTML   = "text/html; charset=utf-8"
 )
 
 type Handler struct {
@@ -51,7 +55,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed update metric", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("content-type", "text/plain; charset=utf-8")
+	w.Header().Set(ContentTypeHeader, ContentTypeText)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -76,7 +80,7 @@ func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("content-type", "text/plain; charset=utf-8")
+	w.Header().Set(ContentTypeHeader, ContentTypeText)
 	if metricTypeVal == models.Gauge {
 		fmt.Fprint(w, metric.Value)
 	} else if metricTypeVal == models.Counter {
@@ -116,7 +120,7 @@ func (h *Handler) GetMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set(ContentTypeHeader, ContentTypeHTML)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pageBuffer.Bytes())
 }

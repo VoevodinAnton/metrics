@@ -46,10 +46,7 @@ func (s *service) runAgent() {
 	}()
 	for {
 		time.Sleep(s.cfg.ReportInterval)
-		err := s.sendMetrics()
-		if err != nil {
-			fmt.Println("Error sending metrics:", err)
-		}
+		s.sendMetrics()
 	}
 }
 
@@ -81,7 +78,8 @@ func (s *service) updateMetrics() {
 	_ = s.store.UpdateCounter(&models.CounterMetric{Name: "PollCount", Type: models.Counter, Value: 1})
 }
 
-func (s *service) sendMetrics() error {
+func (s *service) sendMetrics() {
+	const urlTemplate = "http://%s/update/%s/%s/%f"
 	for metricName, metricType := range s.cfg.RuntimeMetrics {
 		metric, err := s.store.GetGauge(metricName)
 		if err != nil {
@@ -89,7 +87,7 @@ func (s *service) sendMetrics() error {
 			continue
 		}
 
-		url := fmt.Sprintf("http://%s/update/%s/%s/%f", s.cfg.ServerAddress, metricType, metricName, metric.Value)
+		url := fmt.Sprintf(urlTemplate, s.cfg.ServerAddress, metricType, metricName, metric.Value)
 		resp, err := http.Get(url)
 		if err != nil {
 			log.Println(err)
@@ -107,7 +105,7 @@ func (s *service) sendMetrics() error {
 				log.Println(err)
 				continue
 			}
-			url = fmt.Sprintf("http://%s/update/%s/%s/%f", s.cfg.ServerAddress, metricType, metricName, metric.Value)
+			url = fmt.Sprintf(urlTemplate, s.cfg.ServerAddress, metricType, metricName, metric.Value)
 			resp, err := http.Get(url)
 			if err != nil {
 				log.Println(err)
@@ -130,8 +128,6 @@ func (s *service) sendMetrics() error {
 			_ = s.store.ResetCounter(metricName)
 		}
 	}
-
-	return nil
 }
 
 func getRandomValue() float64 {
