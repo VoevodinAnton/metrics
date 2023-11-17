@@ -8,7 +8,7 @@ const (
 )
 
 type Metric struct {
+	Value any
 	Name  string
 	Type  MetricType
-	Value any
 }
