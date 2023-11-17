@@ -33,24 +33,27 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	metricName := chi.URLParam(r, metricNameURLParam)
 	metricValue := chi.URLParam(r, metricValueURLParam)
 
-	value, err := strconv.ParseFloat(metricValue, 64)
-	if err != nil {
-		http.Error(w, ErrInvalidMetricValue.Error(), http.StatusBadRequest)
-		return
-	}
-
 	var metricTypeVal models.MetricType
+	var metricVal any
+	var err error
 	switch metricType {
 	case gauge:
 		metricTypeVal = models.Gauge
+		metricVal, err = strconv.ParseFloat(metricValue, 64)
 	case counter:
 		metricTypeVal = models.Counter
+		metricVal, err = strconv.ParseInt(metricValue, 10, 64)
 	default:
 		http.Error(w, ErrInvalidMetricType.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = h.Service.UpdateMetric(&models.MetricReq{Name: metricName, Type: metricTypeVal, Value: value})
+	if err != nil {
+		http.Error(w, ErrInvalidMetricValue.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = h.Service.UpdateMetric(&models.Metric{Name: metricName, Type: metricTypeVal, Value: metricVal})
 	if err != nil {
 		http.Error(w, "Failed update metric", http.StatusInternalServerError)
 		return
@@ -74,19 +77,14 @@ func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metric, err := h.Service.GetMetric(&models.MetricReq{Name: metricName, Type: metricTypeVal})
+	metric, err := h.Service.GetMetric(&models.Metric{Name: metricName, Type: metricTypeVal})
 	if err != nil {
 		http.Error(w, "Metric not found", http.StatusNotFound)
 		return
 	}
 
 	w.Header().Set(ContentTypeHeader, ContentTypeText)
-	if metricTypeVal == models.Gauge {
-		fmt.Fprint(w, metric.Value)
-	} else if metricTypeVal == models.Counter {
-		fmt.Fprint(w, int64(metric.Value))
-	}
-
+	fmt.Fprint(w, metric.Value)
 	w.WriteHeader(http.StatusOK)
 }
 

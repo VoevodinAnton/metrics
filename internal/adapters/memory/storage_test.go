@@ -9,11 +9,11 @@ import (
 
 func TestStorage_UpdateGauge(t *testing.T) {
 	type fields struct {
-		GaugeMetrics   map[string]*models.GaugeMetric
-		CounterMetrics map[string]*models.CounterMetric
+		GaugeMetrics   map[string]*models.Metric
+		CounterMetrics map[string]*models.Metric
 	}
 	type args struct {
-		Metric *models.GaugeMetric
+		Metric *models.Metric
 	}
 	tests := []struct {
 		name   string
@@ -24,11 +24,11 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		{
 			name: "gauge positive value",
 			fields: fields{
-				GaugeMetrics:   make(map[string]*models.GaugeMetric),
-				CounterMetrics: make(map[string]*models.CounterMetric),
+				GaugeMetrics:   make(map[string]*models.Metric),
+				CounterMetrics: make(map[string]*models.Metric),
 			},
 			args: args{
-				Metric: &models.GaugeMetric{
+				Metric: &models.Metric{
 					Name:  "SomeGaugeMetric",
 					Type:  0,
 					Value: 10.0,
@@ -39,11 +39,11 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		{
 			name: "gauge negative value",
 			fields: fields{
-				GaugeMetrics:   make(map[string]*models.GaugeMetric),
-				CounterMetrics: make(map[string]*models.CounterMetric),
+				GaugeMetrics:   make(map[string]*models.Metric),
+				CounterMetrics: make(map[string]*models.Metric),
 			},
 			args: args{
-				Metric: &models.GaugeMetric{
+				Metric: &models.Metric{
 					Name:  "SomeGaugeMetric",
 					Type:  0,
 					Value: -10.0,
@@ -54,11 +54,11 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		{
 			name: "gauge zero value",
 			fields: fields{
-				GaugeMetrics:   make(map[string]*models.GaugeMetric),
-				CounterMetrics: make(map[string]*models.CounterMetric),
+				GaugeMetrics:   make(map[string]*models.Metric),
+				CounterMetrics: make(map[string]*models.Metric),
 			},
 			args: args{
-				Metric: &models.GaugeMetric{
+				Metric: &models.Metric{
 					Name:  "SomeGaugeMetric",
 					Type:  0,
 					Value: 0.0,
@@ -82,11 +82,11 @@ func TestStorage_UpdateGauge(t *testing.T) {
 
 func TestStorage_UpdateCounter(t *testing.T) {
 	type fields struct {
-		GaugeMetrics   map[string]*models.GaugeMetric
-		CounterMetrics map[string]*models.CounterMetric
+		GaugeMetrics   map[string]*models.Metric
+		CounterMetrics map[string]*models.Metric
 	}
 	type args struct {
-		Metric *models.CounterMetric
+		Metric *models.Metric
 	}
 	tests := []struct {
 		name   string
@@ -97,11 +97,11 @@ func TestStorage_UpdateCounter(t *testing.T) {
 		{
 			name: "counter positive value",
 			fields: fields{
-				GaugeMetrics:   make(map[string]*models.GaugeMetric),
-				CounterMetrics: make(map[string]*models.CounterMetric),
+				GaugeMetrics:   make(map[string]*models.Metric),
+				CounterMetrics: make(map[string]*models.Metric),
 			},
 			args: args{
-				Metric: &models.CounterMetric{
+				Metric: &models.Metric{
 					Name:  "SomeCounterMetric",
 					Type:  1,
 					Value: 10,
@@ -112,11 +112,11 @@ func TestStorage_UpdateCounter(t *testing.T) {
 		{
 			name: "counter zero value",
 			fields: fields{
-				GaugeMetrics:   make(map[string]*models.GaugeMetric),
-				CounterMetrics: make(map[string]*models.CounterMetric),
+				GaugeMetrics:   make(map[string]*models.Metric),
+				CounterMetrics: make(map[string]*models.Metric),
 			},
 			args: args{
-				Metric: &models.CounterMetric{
+				Metric: &models.Metric{
 					Name:  "SomeCounterMetric",
 					Type:  1,
 					Value: 0,

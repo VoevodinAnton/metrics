@@ -17,9 +17,9 @@ var (
 )
 
 type Service interface {
-	GetMetric(req *models.MetricReq) (*models.MetricResp, error)
-	UpdateMetric(req *models.MetricReq) error
-	GetMetrics() ([]*models.MetricResp, error)
+	GetMetric(req *models.Metric) (*models.Metric, error)
+	UpdateMetric(req *models.Metric) error
+	GetMetrics() ([]*models.Metric, error)
 }
 
 type Router struct {

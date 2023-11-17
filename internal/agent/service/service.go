@@ -11,13 +11,15 @@ import (
 
 	"github.com/VoevodinAnton/metrics/internal/agent/config"
 	"github.com/VoevodinAnton/metrics/internal/models"
+	"github.com/pkg/errors"
 )
 
 type Store interface {
-	UpdateGauge(metric *models.GaugeMetric) error
-	GetGauge(name string) (*models.GaugeMetric, error)
-	UpdateCounter(metric *models.CounterMetric) error
-	GetCounter(name string) (*models.CounterMetric, error)
+	UpdateGauge(metric *models.Metric) error
+	UpdateCounter(metric *models.Metric) error
+	GetCounterMetrics() (map[string]*models.Metric, error)
+	GetGaugeMetrics() (map[string]*models.Metric, error)
+
 	ResetCounter(name string) error
 }
 
@@ -34,19 +36,24 @@ func New(cfg *config.Config, store Store) *service {
 }
 
 func (s *service) Start() {
-	s.runAgent()
+	s.Run()
 }
 
-func (s *service) runAgent() {
+func (s *service) Run() {
 	go func() {
 		for {
 			s.updateMetrics()
 			time.Sleep(s.cfg.PollInterval)
 		}
 	}()
-	for {
-		time.Sleep(s.cfg.ReportInterval)
-		s.sendMetrics()
+	ticker := time.NewTicker(s.cfg.ReportInterval)
+	for range ticker.C {
+		if err := s.SendCounterMetrics(); err != nil {
+			log.Println("[ERROR] sendCounterMetrics error", err)
+		}
+		if err := s.SendGaugeMetrics(); err != nil {
+			log.Println("[ERROR] sendGaugeMetrics error", err)
+		}
 	}
 }
 
@@ -58,76 +65,68 @@ func (s *service) updateMetrics() {
 
 	for metricName := range s.cfg.RuntimeMetrics {
 		v := memStatsValue.FieldByName(metricName)
+		var gaugeMetric *models.Metric
 		if v.CanUint() {
-			err := s.store.UpdateGauge(&models.GaugeMetric{Name: metricName, Type: models.Counter, Value: float64(v.Uint())})
-			if err != nil {
-				log.Println(err)
-				continue
-			}
+			gaugeMetric = &models.Metric{Name: metricName, Type: models.Counter, Value: float64(v.Uint())}
 		}
 		if v.CanFloat() {
-			err := s.store.UpdateGauge(&models.GaugeMetric{Name: metricName, Type: models.Gauge, Value: v.Float()})
-			if err != nil {
-				log.Println(err)
-				continue
-			}
+			gaugeMetric = &models.Metric{Name: metricName, Type: models.Gauge, Value: v.Float()}
+		}
+
+		err := s.store.UpdateGauge(gaugeMetric)
+		if err != nil {
+			log.Println("[ERROR] updateGauge error", err)
+			continue
 		}
 	}
 
-	_ = s.store.UpdateGauge(&models.GaugeMetric{Name: "RandomValue", Type: models.Gauge, Value: getRandomValue()})
-	_ = s.store.UpdateCounter(&models.CounterMetric{Name: "PollCount", Type: models.Counter, Value: 1})
+	_ = s.store.UpdateGauge(&models.Metric{Name: "RandomValue", Type: models.Gauge, Value: getRandomValue()})
+	_ = s.store.UpdateCounter(&models.Metric{Name: "PollCount", Type: models.Counter, Value: int64(1)})
 }
 
-func (s *service) sendMetrics() {
-	const urlTemplate = "http://%s/update/%s/%s/%f"
-	for metricName, metricType := range s.cfg.RuntimeMetrics {
-		metric, err := s.store.GetGauge(metricName)
-		if err != nil {
-			log.Println(err)
+func (s *service) SendCounterMetrics() error {
+	counterMetrics, err := s.store.GetCounterMetrics()
+	if err != nil {
+		return errors.Wrap(err, "GetCounterMetrics")
+	}
+	for metricName, metric := range counterMetrics {
+		url := fmt.Sprintf("http://%s/update/counter/%s/%d", s.cfg.ServerAddress, metricName, metric.Value)
+		if err := s.sendMetrics(url); err != nil {
+			log.Println("[ERROR] send counter metrics error", err)
 			continue
 		}
+		_ = s.store.ResetCounter(metricName)
+	}
 
-		url := fmt.Sprintf(urlTemplate, s.cfg.ServerAddress, metricType, metricName, metric.Value)
-		resp, err := http.Get(url)
-		if err != nil {
-			log.Println(err)
+	return nil
+}
+
+func (s *service) SendGaugeMetrics() error {
+	gaugeMetrics, err := s.store.GetGaugeMetrics()
+	if err != nil {
+		return errors.Wrap(err, "GetGaugeMetrics")
+	}
+	for metricName, metric := range gaugeMetrics {
+		url := fmt.Sprintf("http://%s/update/gauge/%s/%f", s.cfg.ServerAddress, metricName, metric.Value)
+		if err := s.sendMetrics(url); err != nil {
+			log.Println("[ERROR] send gauge metrics error", err)
 			continue
 		}
-		_ = resp.Body.Close()
 	}
 
-	for metricName, metricType := range s.cfg.CustomMetrics {
-		var url string
-		switch metricType {
-		case "gauge":
-			metric, err := s.store.GetGauge(metricName)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			url = fmt.Sprintf(urlTemplate, s.cfg.ServerAddress, metricType, metricName, metric.Value)
-			resp, err := http.Get(url)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			_ = resp.Body.Close()
-		case "counter":
-			metric, err := s.store.GetCounter(metricName)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			url = fmt.Sprintf("http://%s/update/%s/%s/%d", s.cfg.ServerAddress, metricType, metricName, metric.Value)
-			resp, err := http.Get(url)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			_ = resp.Body.Close()
-			_ = s.store.ResetCounter(metricName)
-		}
+	return nil
+}
+
+func (s *service) sendMetrics(url string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return errors.Wrap(err, "http.Get")
 	}
+	if err = resp.Body.Close(); err != nil {
+		return errors.Wrap(err, "body.Close")
+	}
+
+	return nil
 }
 
 func getRandomValue() float64 {

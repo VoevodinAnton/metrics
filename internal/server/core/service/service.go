@@ -6,12 +6,12 @@ import (
 )
 
 type Store interface {
-	UpdateGauge(metric *models.GaugeMetric) error
-	GetGauge(name string) (*models.GaugeMetric, error)
-	UpdateCounter(metric *models.CounterMetric) error
-	GetCounter(name string) (*models.CounterMetric, error)
-	GetCounterMetrics() (map[string]*models.CounterMetric, error)
-	GetGaugeMetrics() (map[string]*models.GaugeMetric, error)
+	UpdateGauge(metric *models.Metric) error
+	GetGauge(name string) (*models.Metric, error)
+	UpdateCounter(metric *models.Metric) error
+	GetCounter(name string) (*models.Metric, error)
+	GetCounterMetrics() (map[string]*models.Metric, error)
+	GetGaugeMetrics() (map[string]*models.Metric, error)
 }
 
 type Service struct {
@@ -24,35 +24,35 @@ func New(store Store) *Service {
 	}
 }
 
-func (s *Service) GetMetric(req *models.MetricReq) (*models.MetricResp, error) {
-	var metricResp *models.MetricResp
+func (s *Service) GetMetric(req *models.Metric) (*models.Metric, error) {
+	var metricResp *models.Metric
 	switch req.Type {
 	case models.Gauge:
 		gauge, err := s.store.GetGauge(req.Name)
 		if err != nil {
 			return nil, errors.Wrap(err, "GetGauge")
 		}
-		metricResp = gaugeModelToAPI(gauge)
+		metricResp = gauge
 	case models.Counter:
 		counter, err := s.store.GetCounter(req.Name)
 		if err != nil {
 			return nil, errors.Wrap(err, "GetCounter")
 		}
-		metricResp = counterModelToAPI(counter)
+		metricResp = counter
 	}
 
 	return metricResp, nil
 }
 
-func (s *Service) UpdateMetric(req *models.MetricReq) error {
+func (s *Service) UpdateMetric(req *models.Metric) error {
 	switch req.Type {
 	case models.Gauge:
-		err := s.store.UpdateGauge(gaugeAPIToModel(req))
+		err := s.store.UpdateGauge(req)
 		if err != nil {
 			return errors.Wrap(err, "UpdateGauge")
 		}
 	case models.Counter:
-		err := s.store.UpdateCounter(counterAPIToModel(req))
+		err := s.store.UpdateCounter(req)
 		if err != nil {
 			return errors.Wrap(err, "UpdateCounter")
 		}
@@ -61,7 +61,7 @@ func (s *Service) UpdateMetric(req *models.MetricReq) error {
 	return nil
 }
 
-func (s *Service) GetMetrics() ([]*models.MetricResp, error) {
+func (s *Service) GetMetrics() ([]*models.Metric, error) {
 	counterMetrics, err := s.store.GetCounterMetrics()
 	if err != nil {
 		return nil, errors.Wrap(err, "GetCounterMetrics")
@@ -70,45 +70,13 @@ func (s *Service) GetMetrics() ([]*models.MetricResp, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "GetGaugeMetrics")
 	}
-	resp := make([]*models.MetricResp, 0, len(counterMetrics)+len(gaugeMetrics))
+	resp := make([]*models.Metric, 0, len(counterMetrics)+len(gaugeMetrics))
 	for _, v := range counterMetrics {
-		resp = append(resp, counterModelToAPI(v))
+		resp = append(resp, v)
 	}
 	for _, v := range gaugeMetrics {
-		resp = append(resp, gaugeModelToAPI(v))
+		resp = append(resp, v)
 	}
 
 	return resp, nil
-}
-
-func counterAPIToModel(c *models.MetricReq) *models.CounterMetric {
-	return &models.CounterMetric{
-		Name:  c.Name,
-		Type:  c.Type,
-		Value: int64(c.Value),
-	}
-}
-
-func counterModelToAPI(m *models.CounterMetric) *models.MetricResp {
-	return &models.MetricResp{
-		Name:  m.Name,
-		Type:  m.Type,
-		Value: float64(m.Value),
-	}
-}
-
-func gaugeAPIToModel(c *models.MetricReq) *models.GaugeMetric {
-	return &models.GaugeMetric{
-		Name:  c.Name,
-		Type:  c.Type,
-		Value: c.Value,
-	}
-}
-
-func gaugeModelToAPI(m *models.GaugeMetric) *models.MetricResp {
-	return &models.MetricResp{
-		Name:  m.Name,
-		Type:  m.Type,
-		Value: m.Value,
-	}
 }
