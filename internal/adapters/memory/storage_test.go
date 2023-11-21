@@ -8,25 +8,16 @@ import (
 )
 
 func TestStorage_UpdateGauge(t *testing.T) {
-	type fields struct {
-		GaugeMetrics   map[string]*models.Metric
-		CounterMetrics map[string]*models.Metric
-	}
 	type args struct {
 		Metric models.Metric
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   float64
+		name string
+		args args
+		want float64
 	}{
 		{
 			name: "gauge positive value",
-			fields: fields{
-				GaugeMetrics:   make(map[string]*models.Metric),
-				CounterMetrics: make(map[string]*models.Metric),
-			},
 			args: args{
 				Metric: models.Metric{
 					Name:  "SomeGaugeMetric",
@@ -38,10 +29,6 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		},
 		{
 			name: "gauge negative value",
-			fields: fields{
-				GaugeMetrics:   make(map[string]*models.Metric),
-				CounterMetrics: make(map[string]*models.Metric),
-			},
 			args: args{
 				Metric: models.Metric{
 					Name:  "SomeGaugeMetric",
@@ -53,10 +40,6 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		},
 		{
 			name: "gauge zero value",
-			fields: fields{
-				GaugeMetrics:   make(map[string]*models.Metric),
-				CounterMetrics: make(map[string]*models.Metric),
-			},
 			args: args{
 				Metric: models.Metric{
 					Name:  "SomeGaugeMetric",
@@ -69,37 +52,28 @@ func TestStorage_UpdateGauge(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Storage{
-				gaugeMetrics:   tt.fields.GaugeMetrics,
-				counterMetrics: tt.fields.CounterMetrics,
-			}
+			s := &Storage{}
 			_ = s.UpdateGauge(tt.args.Metric)
 
-			assert.Equal(t, tt.want, s.gaugeMetrics[tt.args.Metric.Name].Value)
+			m, _ := s.gaugeMetrics.Load(tt.args.Metric.Name)
+			metric, _ := m.(models.Metric)
+
+			assert.Equal(t, tt.want, metric.Value)
 		})
 	}
 }
 
 func TestStorage_UpdateCounter(t *testing.T) {
-	type fields struct {
-		GaugeMetrics   map[string]*models.Metric
-		CounterMetrics map[string]*models.Metric
-	}
 	type args struct {
 		Metric models.Metric
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   int64
+		name string
+		args args
+		want int64
 	}{
 		{
 			name: "counter positive value",
-			fields: fields{
-				GaugeMetrics:   make(map[string]*models.Metric),
-				CounterMetrics: make(map[string]*models.Metric),
-			},
 			args: args{
 				Metric: models.Metric{
 					Name:  "SomeCounterMetric",
@@ -111,10 +85,6 @@ func TestStorage_UpdateCounter(t *testing.T) {
 		},
 		{
 			name: "counter zero value",
-			fields: fields{
-				GaugeMetrics:   make(map[string]*models.Metric),
-				CounterMetrics: make(map[string]*models.Metric),
-			},
 			args: args{
 				Metric: models.Metric{
 					Name:  "SomeCounterMetric",
@@ -127,13 +97,13 @@ func TestStorage_UpdateCounter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Storage{
-				gaugeMetrics:   tt.fields.GaugeMetrics,
-				counterMetrics: tt.fields.CounterMetrics,
-			}
+			s := &Storage{}
 			_ = s.UpdateCounter(tt.args.Metric)
 
-			assert.Equal(t, tt.want, s.counterMetrics[tt.args.Metric.Name].Value)
+			m, _ := s.counterMetrics.Load(tt.args.Metric.Name)
+			metric, _ := m.(models.Metric)
+
+			assert.Equal(t, tt.want, metric.Value)
 		})
 	}
 }

@@ -3,9 +3,12 @@ package config
 import (
 	"flag"
 	"os"
+
+	"github.com/VoevodinAnton/metrics/pkg/config"
 )
 
 type Config struct {
+	Logger *config.Logger
 	Server Server
 }
 
@@ -26,6 +29,10 @@ func InitConfig() *Config {
 	cfg := Config{
 		Server: Server{
 			Address: serverAddress,
+		},
+		Logger: &config.Logger{
+			Development: true,
+			Level:       "debug",
 		},
 	}
 

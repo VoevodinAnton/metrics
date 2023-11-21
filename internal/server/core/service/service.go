@@ -7,11 +7,11 @@ import (
 
 type Store interface {
 	UpdateGauge(metric models.Metric) error
-	GetGauge(name string) (*models.Metric, error)
+	GetGauge(name string) (models.Metric, error)
 	UpdateCounter(metric models.Metric) error
-	GetCounter(name string) (*models.Metric, error)
-	GetCounterMetrics() (map[string]*models.Metric, error)
-	GetGaugeMetrics() (map[string]*models.Metric, error)
+	GetCounter(name string) (models.Metric, error)
+	GetCounterMetrics() (map[string]models.Metric, error)
+	GetGaugeMetrics() (map[string]models.Metric, error)
 }
 
 type Service struct {
@@ -24,19 +24,19 @@ func New(store Store) *Service {
 	}
 }
 
-func (s *Service) GetMetric(req *models.Metric) (*models.Metric, error) {
-	var metricResp *models.Metric
+func (s *Service) GetMetric(req models.Metric) (models.Metric, error) {
+	var metricResp models.Metric
 	switch req.Type {
 	case models.Gauge:
 		gauge, err := s.store.GetGauge(req.Name)
 		if err != nil {
-			return nil, errors.Wrap(err, "GetGauge")
+			return models.Metric{}, errors.Wrap(err, "GetGauge")
 		}
 		metricResp = gauge
 	case models.Counter:
 		counter, err := s.store.GetCounter(req.Name)
 		if err != nil {
-			return nil, errors.Wrap(err, "GetCounter")
+			return models.Metric{}, errors.Wrap(err, "GetCounter")
 		}
 		metricResp = counter
 	}
@@ -61,7 +61,7 @@ func (s *Service) UpdateMetric(req models.Metric) error {
 	return nil
 }
 
-func (s *Service) GetMetrics() ([]*models.Metric, error) {
+func (s *Service) GetMetrics() ([]models.Metric, error) {
 	counterMetrics, err := s.store.GetCounterMetrics()
 	if err != nil {
 		return nil, errors.Wrap(err, "GetCounterMetrics")
@@ -70,7 +70,7 @@ func (s *Service) GetMetrics() ([]*models.Metric, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "GetGaugeMetrics")
 	}
-	resp := make([]*models.Metric, 0, len(counterMetrics)+len(gaugeMetrics))
+	resp := make([]models.Metric, 0, len(counterMetrics)+len(gaugeMetrics))
 	for _, v := range counterMetrics {
 		resp = append(resp, v)
 	}

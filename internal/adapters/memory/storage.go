@@ -13,85 +13,89 @@ var (
 )
 
 type Storage struct {
-	gaugeMetrics   map[string]*models.Metric
-	counterMetrics map[string]*models.Metric
+	gaugeMetrics   sync.Map
+	counterMetrics sync.Map
 
 	sync.Mutex
 }
 
 func NewStorage() *Storage {
-	return &Storage{
-		gaugeMetrics:   make(map[string]*models.Metric),
-		counterMetrics: make(map[string]*models.Metric),
-	}
+	return &Storage{}
 }
 
 func (s *Storage) UpdateGauge(metric models.Metric) error {
-	s.Lock()
-	defer s.Unlock()
-	s.gaugeMetrics[metric.Name] = &metric
-
+	s.gaugeMetrics.Store(metric.Name, metric)
 	return nil
 }
 
-func (s *Storage) GetGauge(name string) (*models.Metric, error) {
-	s.Lock()
-	defer s.Unlock()
-	value, ok := s.gaugeMetrics[name]
+func (s *Storage) GetGauge(name string) (models.Metric, error) {
+	value, ok := s.gaugeMetrics.Load(name)
 	if !ok {
-		return nil, errors.Wrap(ErrMetricNotFound, name)
+		return models.Metric{}, errors.Wrap(ErrMetricNotFound, name)
 	}
 
-	return value, nil
+	return value.(models.Metric), nil
 }
 
 func (s *Storage) UpdateCounter(update models.Metric) error {
-	s.Lock()
-	defer s.Unlock()
-	metric, ok := s.counterMetrics[update.Name]
+	m, ok := s.counterMetrics.Load(update.Name)
 	if !ok {
-		metric = &update
-	} else {
-		value, _ := metric.Value.(int64)
-		if newValue, ok := update.Value.(int64); ok {
-			metric.Value = value + newValue
-		}
+		s.counterMetrics.Store(update.Name, update)
+		return nil
 	}
-
-	s.counterMetrics[update.Name] = metric
+	metric, _ := m.(models.Metric)
+	value, _ := metric.Value.(int64)
+	if newValue, ok := update.Value.(int64); ok {
+		metric.Value = value + newValue
+	}
+	s.counterMetrics.Store(update.Name, metric)
 
 	return nil
 }
 
-func (s *Storage) GetCounter(name string) (*models.Metric, error) {
-	s.Lock()
-	defer s.Unlock()
-
-	value, ok := s.counterMetrics[name]
+func (s *Storage) GetCounter(name string) (models.Metric, error) {
+	value, ok := s.counterMetrics.Load(name)
 	if !ok {
-		return nil, errors.Wrap(ErrMetricNotFound, name)
+		return models.Metric{}, errors.Wrap(ErrMetricNotFound, name)
 	}
 
-	return value, nil
+	return value.(models.Metric), nil
 }
 
-func (s *Storage) GetCounterMetrics() (map[string]*models.Metric, error) {
-	s.Lock()
-	defer s.Unlock()
-	return s.counterMetrics, nil
+func (s *Storage) GetCounterMetrics() (map[string]models.Metric, error) {
+	data := make(map[string]models.Metric)
+	s.counterMetrics.Range(func(key, value any) bool {
+		keyStr, _ := key.(string)
+		valueMetric, _ := value.(models.Metric)
+
+		data[keyStr] = valueMetric
+		return true
+	})
+
+	return data, nil
 }
 
-func (s *Storage) GetGaugeMetrics() (map[string]*models.Metric, error) {
-	s.Lock()
-	defer s.Unlock()
-	return s.gaugeMetrics, nil
+func (s *Storage) GetGaugeMetrics() (map[string]models.Metric, error) {
+	data := make(map[string]models.Metric)
+	s.gaugeMetrics.Range(func(key, value any) bool {
+		keyStr, _ := key.(string)
+		valueMetric, _ := value.(models.Metric)
+
+		data[keyStr] = valueMetric
+		return true
+	})
+
+	return data, nil
 }
 
 func (s *Storage) ResetCounter(name string) error {
-	s.Lock()
-	defer s.Unlock()
+	metric := models.Metric{
+		Name:  name,
+		Value: int64(0),
+		Type:  models.Counter,
+	}
 
-	s.counterMetrics[name].Value = int64(0)
+	s.counterMetrics.Store(name, metric)
 
 	return nil
 }

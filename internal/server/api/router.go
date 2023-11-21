@@ -5,6 +5,7 @@ import (
 
 	"github.com/VoevodinAnton/metrics/internal/models"
 	"github.com/VoevodinAnton/metrics/internal/server/config"
+	"github.com/VoevodinAnton/metrics/pkg/logging"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/pkg/errors"
@@ -16,9 +17,9 @@ var (
 )
 
 type Service interface {
-	GetMetric(req *models.Metric) (*models.Metric, error)
+	GetMetric(req models.Metric) (models.Metric, error)
 	UpdateMetric(req models.Metric) error
-	GetMetrics() ([]*models.Metric, error)
+	GetMetrics() ([]models.Metric, error)
 }
 
 type Router struct {
@@ -34,6 +35,7 @@ func NewRouter(cfg *config.Config, service Service) *Router {
 
 	r.Use(
 		middleware.Recoverer,
+		logging.WithLogging,
 	)
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateMetricHandler)

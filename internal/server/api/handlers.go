@@ -75,7 +75,7 @@ func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	metricReq := models.Metric{Name: metricName, Type: metricTypeVal}
-	metric, err := h.Service.GetMetric(&metricReq)
+	metric, err := h.Service.GetMetric(metricReq)
 	if err != nil {
 		http.Error(w, "Metric not found", http.StatusNotFound)
 		return
