@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/VoevodinAnton/metrics/internal/adapters/memory"
-	"github.com/VoevodinAnton/metrics/internal/server/api"
+	"github.com/VoevodinAnton/metrics/internal/server/adapters/api"
+	"github.com/VoevodinAnton/metrics/internal/server/adapters/memory"
 	"github.com/VoevodinAnton/metrics/internal/server/config"
 	"github.com/VoevodinAnton/metrics/internal/server/core/service"
 	logger "github.com/VoevodinAnton/metrics/pkg/logging"

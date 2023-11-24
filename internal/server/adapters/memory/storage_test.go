@@ -3,13 +3,13 @@ package memory
 import (
 	"testing"
 
-	"github.com/VoevodinAnton/metrics/internal/models"
+	"github.com/VoevodinAnton/metrics/internal/server/models"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStorage_UpdateGauge(t *testing.T) {
 	type args struct {
-		Metric models.Metric
+		Metric *models.Metric
 	}
 	tests := []struct {
 		name string
@@ -19,9 +19,9 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		{
 			name: "gauge positive value",
 			args: args{
-				Metric: models.Metric{
+				Metric: &models.Metric{
 					Name:  "SomeGaugeMetric",
-					Type:  0,
+					Type:  models.Gauge,
 					Value: 10.0,
 				},
 			},
@@ -30,9 +30,9 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		{
 			name: "gauge negative value",
 			args: args{
-				Metric: models.Metric{
+				Metric: &models.Metric{
 					Name:  "SomeGaugeMetric",
-					Type:  0,
+					Type:  models.Gauge,
 					Value: -10.0,
 				},
 			},
@@ -41,9 +41,9 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		{
 			name: "gauge zero value",
 			args: args{
-				Metric: models.Metric{
+				Metric: &models.Metric{
 					Name:  "SomeGaugeMetric",
-					Type:  0,
+					Type:  models.Gauge,
 					Value: 0.0,
 				},
 			},
@@ -56,7 +56,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 			_ = s.UpdateGauge(tt.args.Metric)
 
 			m, _ := s.gaugeMetrics.Load(tt.args.Metric.Name)
-			metric, _ := m.(models.Metric)
+			metric, _ := m.(*models.Metric)
 
 			assert.Equal(t, tt.want, metric.Value)
 		})
@@ -65,7 +65,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 
 func TestStorage_UpdateCounter(t *testing.T) {
 	type args struct {
-		Metric models.Metric
+		Metric *models.Metric
 	}
 	tests := []struct {
 		name string
@@ -75,9 +75,9 @@ func TestStorage_UpdateCounter(t *testing.T) {
 		{
 			name: "counter positive value",
 			args: args{
-				Metric: models.Metric{
+				Metric: &models.Metric{
 					Name:  "SomeCounterMetric",
-					Type:  1,
+					Type:  "",
 					Value: int64(10),
 				},
 			},
@@ -86,9 +86,9 @@ func TestStorage_UpdateCounter(t *testing.T) {
 		{
 			name: "counter zero value",
 			args: args{
-				Metric: models.Metric{
+				Metric: &models.Metric{
 					Name:  "SomeCounterMetric",
-					Type:  1,
+					Type:  models.Counter,
 					Value: int64(0),
 				},
 			},
@@ -101,7 +101,7 @@ func TestStorage_UpdateCounter(t *testing.T) {
 			_ = s.UpdateCounter(tt.args.Metric)
 
 			m, _ := s.counterMetrics.Load(tt.args.Metric.Name)
-			metric, _ := m.(models.Metric)
+			metric, _ := m.(*models.Metric)
 
 			assert.Equal(t, tt.want, metric.Value)
 		})
