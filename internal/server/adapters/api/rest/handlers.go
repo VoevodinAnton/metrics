@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
+	"github.com/VoevodinAnton/metrics/internal/server/adapters/middlewares"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -24,7 +25,8 @@ const (
 )
 
 type Handler struct {
-	Service Service
+	service Service
+	mw      middlewares.MiddlewareManager
 }
 
 func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +56,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	req.MType = metricType
 
-	err = h.Service.UpdateMetric(&req)
+	err = h.service.UpdateMetric(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -68,7 +70,7 @@ func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 	metricName := chi.URLParam(r, metricNameURLParam)
 
 	metricReq := &domain.Metrics{ID: metricName, MType: metricType}
-	metric, err := h.Service.GetMetric(metricReq)
+	metric, err := h.service.GetMetric(metricReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -102,7 +104,7 @@ func (h *Handler) GetMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	</html>
 	`))
 
-	metrics, err := h.Service.GetMetrics()
+	metrics, err := h.service.GetMetrics()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -126,7 +128,7 @@ func (h *Handler) UpdateJSONMetricHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	err := h.Service.UpdateMetric(&metricUpdate)
+	err := h.service.UpdateMetric(&metricUpdate)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -141,7 +143,7 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	metric, err := h.Service.GetMetric(&metricReq)
+	metric, err := h.service.GetMetric(&metricReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

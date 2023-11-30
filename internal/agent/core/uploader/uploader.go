@@ -2,6 +2,7 @@ package uploader
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -60,7 +61,18 @@ func (u *Uploader) Upload(url string, m domain.Metrics) error {
 		return errors.Wrap(err, "json.Marshal")
 	}
 
-	resp, err := http.Post(url, ContentTypeText, bytes.NewBuffer(metricReq))
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+	_, err = w.Write(metricReq)
+	if err != nil {
+		return errors.Wrap(err, "writer.Write")
+	}
+	err = w.Close()
+	if err != nil {
+		return errors.Wrap(err, "writer.Close")
+	}
+
+	resp, err := http.Post(url, ContentTypeText, &b)
 	if err != nil {
 		return errors.Wrap(err, "http.Get")
 	}

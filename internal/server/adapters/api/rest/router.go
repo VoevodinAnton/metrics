@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
+	"github.com/VoevodinAnton/metrics/internal/server/adapters/middlewares"
 	"github.com/VoevodinAnton/metrics/internal/server/config"
 	"github.com/VoevodinAnton/metrics/pkg/logging"
 	"github.com/go-chi/chi/v5"
@@ -27,9 +28,10 @@ type Router struct {
 	r   *chi.Mux
 }
 
-func NewRouter(cfg *config.Config, service Service) *Router {
+func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareManager) *Router {
 	h := Handler{
-		Service: service,
+		service: service,
+		mw:      mw,
 	}
 	r := chi.NewRouter()
 
@@ -40,9 +42,12 @@ func NewRouter(cfg *config.Config, service Service) *Router {
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateMetricHandler)
 	r.Get("/value/{metricType}/{metricName}", h.GetMetricHandler)
-	r.Post("/update", h.UpdateJSONMetricHandler)
-	r.Post("/value", h.GetJSONMetricHandler)
-	r.Get("/", h.GetMetricsHandler)
+
+	gzipGroup := r.Group(nil)
+	gzipGroup.Use(mw.GzipCompressHandle, mw.GzipDecompressHandle)
+	gzipGroup.Post("/update", h.UpdateJSONMetricHandler)
+	gzipGroup.Get("/", h.GetMetricsHandler)
+	gzipGroup.Post("/value", h.GetJSONMetricHandler)
 
 	return &Router{
 		r:   r,
