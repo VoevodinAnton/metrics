@@ -100,7 +100,7 @@ func (b *Backuper) RestoreMetricsFromFile() error {
 
 	for _, metric := range metrics {
 		if metric.Type == models.Counter {
-			v := metric.Value.(float64)
+			v, _ := metric.Value.(float64)
 			metric.Value = toInt64(int64(v))
 			_ = b.store.UpdateCounter(&metric)
 		}

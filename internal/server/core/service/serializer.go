@@ -29,9 +29,11 @@ func metricToResponse(m *models.Metric) *domain.Metrics {
 
 	switch m.Type {
 	case models.MetricType(domain.Counter):
-		metric.Delta = m.Value.(*int64)
+		v, _ := m.Value.(*int64)
+		metric.Delta = v
 	case models.MetricType(domain.Gauge):
-		metric.Value = m.Value.(*float64)
+		v, _ := m.Value.(*float64)
+		metric.Value = v
 	}
 
 	return metric

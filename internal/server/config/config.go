@@ -16,8 +16,8 @@ const (
 type Config struct {
 	Logger        *config.Logger
 	Server        Server
-	StoreInterval time.Duration
 	FilePath      string
+	StoreInterval time.Duration
 	Restore       bool
 }
 
