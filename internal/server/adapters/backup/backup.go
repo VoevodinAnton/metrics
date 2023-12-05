@@ -19,7 +19,7 @@ type Store interface {
 	GetGaugeMetrics() (map[string]models.Metric, error)
 	GetCounterMetrics() (map[string]models.Metric, error)
 	UpdateCounter(update *models.Metric) error
-	UpdateGauge(metric *models.Metric) error
+	UpdateGauge(update *models.Metric) error
 }
 
 type Backuper struct {
@@ -42,6 +42,7 @@ func (b *Backuper) Run() {
 			zap.L().Error("saveMetricsToFile", zap.Error(err))
 			continue
 		}
+		zap.L().Sugar().Infof("metrics saved to file %s", b.cfg.FilePath)
 	}
 }
 
@@ -76,26 +77,41 @@ func (b *Backuper) SaveMetricsToFile() error {
 }
 
 func (b *Backuper) RestoreMetricsFromFile() error {
-	data, err := os.ReadFile(b.cfg.FilePath)
+	file, err := os.Open(b.cfg.FilePath)
 	if err != nil {
-		return errors.Wrap(err, "os.ReadFile")
+		if os.IsNotExist(err) {
+			return nil
+		} else {
+			return errors.Wrap(err, "os.Open")
+		}
 	}
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			zap.L().Error("file.Close", zap.Error(err))
+		}
+	}()
 
-	var metrics map[string]models.Metric
-	err = json.Unmarshal(data, &metrics)
-	if err != nil {
-		return errors.Wrap(err, "json.Unmarshal")
+	metrics := make(map[string]models.Metric)
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&metrics); err != nil {
+		return errors.Wrap(err, "decoder.Decode")
 	}
 
 	for _, metric := range metrics {
 		if metric.Type == models.Counter {
+			v := metric.Value.(float64)
+			metric.Value = toInt64(int64(v))
 			_ = b.store.UpdateCounter(&metric)
 		}
 		if metric.Type == models.Gauge {
 			_ = b.store.UpdateGauge(&metric)
 		}
-
 	}
 
 	return nil
+}
+
+func toInt64(i int64) *int64 {
+	return &i
 }

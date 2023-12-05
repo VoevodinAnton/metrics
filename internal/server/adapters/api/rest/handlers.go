@@ -11,6 +11,7 @@ import (
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
 	"github.com/VoevodinAnton/metrics/internal/server/adapters/middlewares"
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 )
 
 const (
@@ -125,11 +126,13 @@ func (h *Handler) GetMetricsHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var metricUpdate domain.Metrics
 	if err := json.NewDecoder(r.Body).Decode(&metricUpdate); err != nil {
+		zap.L().Error("json.NewDecoder", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
 	err := h.service.UpdateMetric(&metricUpdate)
 	if err != nil {
+		zap.L().Error("service.UpdateMetric", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -42,9 +44,12 @@ func (s *Storage) UpdateCounter(update *models.Metric) error {
 		return nil
 	}
 	metric, _ := m.(*models.Metric)
-	value, _ := metric.Value.(int64)
-	if newValue, ok := update.Value.(int64); ok {
-		metric.Value = value + newValue
+	value, _ := metric.Value.(*int64)
+	if newValue, ok := update.Value.(*int64); ok {
+		sum := *value + *newValue
+		metric.Value = &sum
+	} else {
+		fmt.Println(reflect.TypeOf(update.Value))
 	}
 	s.counterMetrics.Store(update.Name, metric)
 
