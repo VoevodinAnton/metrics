@@ -18,6 +18,7 @@ import (
 
 const (
 	updateURLTemplate = "http://%s/update"
+	clientTimeoutSec  = 60 * time.Second
 )
 
 type Store interface {
@@ -94,7 +95,9 @@ func (u *Uploader) sendCounterMetrics() {
 }
 
 func (u *Uploader) Upload(url string, m domain.Metrics) error {
-	client := http.DefaultClient
+	client := http.Client{
+		Timeout: clientTimeoutSec,
+	}
 	metricsJSON, err := json.Marshal(m)
 	if err != nil {
 		return errors.Wrap(err, "json.Marshal")
