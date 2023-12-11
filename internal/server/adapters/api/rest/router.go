@@ -47,7 +47,7 @@ func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareMan
 	gzipGroup.Use(mw.GzipCompressHandle, mw.GzipDecompressHandle)
 	gzipGroup.Post("/update", h.UpdateJSONMetricHandler)
 	gzipGroup.Get("/", h.GetMetricsHandler)
-	gzipGroup.Post("/value", h.GetJSONMetricHandler)
+	gzipGroup.Post("/value/", h.GetJSONMetricHandler)
 
 	return &Router{
 		r:   r,
