@@ -18,7 +18,7 @@ import (
 
 const (
 	updateURLTemplate = "http://%s/update"
-	clientTimeoutSec  = 60 * time.Second
+	clientTimeout     = 60 * time.Second
 )
 
 type Store interface {
