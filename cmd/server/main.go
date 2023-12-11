@@ -52,6 +52,8 @@ func main() {
 		listenErr <- r.ServeRouter()
 	}()
 
+	zap.L().Sugar().Infof("The server is listening and serving the address %s", cfg.Server.Address)
+
 	select {
 	case sig := <-listenSignals:
 		zap.L().Warn("received signal", zap.String("signal", sig.String()))

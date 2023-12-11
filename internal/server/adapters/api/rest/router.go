@@ -10,7 +10,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 )
 
 var (
@@ -59,9 +58,5 @@ func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareMan
 
 func (r *Router) ServeRouter() error {
 	err := http.ListenAndServe(r.cfg.Server.Address, r.r)
-	if err != nil {
-		return errors.Wrap(err, "http.ListenAndServe")
-	}
-	zap.L().Sugar().Infof("The server is listening and serving the address %s", r.cfg.Server.Address)
-	return nil
+	return errors.Wrap(err, "http.ListenAndServe")
 }
