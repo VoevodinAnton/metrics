@@ -95,7 +95,10 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 
 			u := NewUploader(cfg, collector)
 
-			u.sendCounterMetrics()
+			err := u.sendCounterMetrics()
+			if err != nil {
+				t.Error(err)
+			}
 		})
 	}
 }
@@ -133,7 +136,10 @@ func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is tes
 
 			u := NewUploader(cfg, collector)
 
-			u.sendGaugeMetrics()
+			err := u.sendGaugeMetrics()
+			if err != nil {
+				t.Error(err)
+			}
 		})
 	}
 }
