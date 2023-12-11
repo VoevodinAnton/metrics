@@ -64,6 +64,7 @@ func InitConfig() *Config {
 			"HeapSys":       "gauge",
 			"LastGC":        "gauge",
 			"Lookups":       "gauge",
+			"NumGC":         "gauge",
 			"MCacheInuse":   "gauge",
 			"MCacheSys":     "gauge",
 			"MSpanInuse":    "gauge",
