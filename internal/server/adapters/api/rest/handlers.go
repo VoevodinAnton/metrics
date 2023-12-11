@@ -125,14 +125,14 @@ func (h *Handler) UpdateJSONMetricHandler(w http.ResponseWriter, r *http.Request
 		zap.L().Error("json.NewDecoder", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
-
+	zap.L().Debug("UpdateJSONMetricHandler", zap.Reflect("json.NewDecoder1", metricUpdate))
 	err := h.service.UpdateMetric(&metricUpdate)
 	if err != nil {
 		zap.L().Error("service.UpdateMetric", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set(constants.ContentTypeHeader, constants.ContentTypeHTML)
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -141,7 +141,7 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&metricReq); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
-
+	zap.L().Debug("GetJSONMetricHandler", zap.Reflect("json.NewDecoder2", metricReq))
 	metric, err := h.service.GetMetric(&metricReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -153,7 +153,7 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	zap.L().Debug("GetJSONMetricHandler1", zap.Reflect("json.Marshal", metricResp))
 	w.Header().Set(constants.ContentTypeHeader, constants.ContentTypeJSON)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(metricResp)

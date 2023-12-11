@@ -60,8 +60,8 @@ func (u *Uploader) sendGaugeMetrics() {
 			Value: &value,
 		}
 
-		if m.ID == "StackSys" {
-			fmt.Println(*m.Value)
+		if m.ID == "MCacheSys" {
+			zap.L().Info("", zap.Float64("MCacheSys 2", *m.Value))
 		}
 
 		err := u.Upload(url, m)

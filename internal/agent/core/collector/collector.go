@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/VoevodinAnton/metrics/internal/agent/config"
+	"go.uber.org/zap"
 )
 
 type Collector struct {
@@ -35,7 +36,7 @@ func (c *Collector) Run() {
 func (c *Collector) updateMetrics() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-
+	zap.L().Info("", zap.Uint64("MCacheSys", memStats.MCacheSys))
 	memStatsValue := reflect.ValueOf(memStats)
 
 	c.Lock()
