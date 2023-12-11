@@ -40,7 +40,7 @@ func NewUploader(cfg *config.Config, store Store) *Uploader {
 	st.Name = "HTTP REQUEST"
 	st.ReadyToTrip = func(counts gobreaker.Counts) bool {
 		failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-		return counts.Requests > 5 && failureRatio >= 0.8
+		return counts.Requests > 20 && failureRatio >= 0.7
 	}
 	return &Uploader{
 		cfg:   cfg,
@@ -54,11 +54,11 @@ func (u *Uploader) Run() {
 	for range ticker.C {
 		if err := u.sendGaugeMetrics(); err != nil {
 			zap.L().Error("sendGaugeMetrics", zap.Error(err))
-			return
+			continue
 		}
 		if err := u.sendCounterMetrics(); err != nil {
 			zap.L().Error("sendCounterMetrics", zap.Error(err))
-			return
+			continue
 		}
 	}
 }
@@ -150,7 +150,7 @@ func (u *Uploader) Upload(url string, m domain.Metrics) error {
 		return nil, nil
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cb.Execute")
 	}
 
 	return nil
