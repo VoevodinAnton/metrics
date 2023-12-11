@@ -36,9 +36,9 @@ func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareMan
 	r := chi.NewRouter()
 
 	r.Use(
+		middleware.StripSlashes,
 		middleware.Recoverer,
 		logging.WithLogging,
-		middleware.RedirectSlashes,
 	)
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateMetricHandler)
@@ -48,7 +48,7 @@ func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareMan
 	gzipGroup.Use(mw.GzipCompressHandle, mw.GzipDecompressHandle)
 	gzipGroup.Post("/update", h.UpdateJSONMetricHandler)
 	gzipGroup.Get("/", h.GetMetricsHandler)
-	gzipGroup.Post("/value/", h.GetJSONMetricHandler)
+	gzipGroup.Post("/value", h.GetJSONMetricHandler)
 
 	return &Router{
 		r:   r,
