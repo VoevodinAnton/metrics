@@ -38,7 +38,7 @@ func InitConfig() *Config {
 
 	flag.StringVar(&serverAddress, "a", "localhost:8080", "HTTP server endpoint address")
 	flag.DurationVar(&storeInterval, "i", defaultStoreInterval, "Interval in seconds to save metrics to disk")
-	flag.StringVar(&filePath, "f", "./tmp/metrics-db.json", "Path to file where metrics are saved")
+	flag.StringVar(&filePath, "f", "/tmp/metrics-db.json", "Path to file where metrics are saved")
 	flag.BoolVar(&restore, "r", true, "Restore metrics from file on start")
 	flag.Parse()
 

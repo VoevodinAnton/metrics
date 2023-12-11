@@ -59,6 +59,10 @@ func (u *Uploader) sendGaugeMetrics() {
 			Value: &value,
 		}
 
+		if m.ID == "StackSys" {
+			fmt.Println(*m.Value)
+		}
+
 		err := u.Upload(url, m)
 		if err != nil {
 			zap.L().Error("upload gauge", zap.Error(err))
