@@ -44,9 +44,6 @@ func main() {
 	service := service.New(storage)
 	r := api.NewRouter(cfg, service, mw)
 
-	osSignal := make(chan os.Signal, 1)
-	signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
-
 	listenErr := make(chan error, 1)
 	listenSignals := make(chan os.Signal, 1)
 	signal.Notify(listenSignals, syscall.SIGINT, syscall.SIGTERM)

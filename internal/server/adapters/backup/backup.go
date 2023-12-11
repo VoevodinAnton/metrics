@@ -101,7 +101,7 @@ func (b *Backuper) RestoreMetricsFromFile() error {
 	for _, metric := range metrics {
 		if metric.Type == models.Counter {
 			v, _ := metric.Value.(float64)
-			metric.Value = toInt64(int64(v))
+			metric.Value = int64(v)
 			_ = b.store.UpdateCounter(metric)
 		}
 		if metric.Type == models.Gauge {
@@ -110,8 +110,4 @@ func (b *Backuper) RestoreMetricsFromFile() error {
 	}
 
 	return nil
-}
-
-func toInt64(i int64) *int64 {
-	return &i
 }
