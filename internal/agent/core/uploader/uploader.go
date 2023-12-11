@@ -96,7 +96,7 @@ func (u *Uploader) sendCounterMetrics() {
 
 func (u *Uploader) Upload(url string, m domain.Metrics) error {
 	client := http.Client{
-		Timeout: clientTimeoutSec,
+		Timeout: clientTimeout,
 	}
 	metricsJSON, err := json.Marshal(m)
 	if err != nil {
