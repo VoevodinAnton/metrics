@@ -141,6 +141,7 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&metricReq); err != nil {
 		zap.L().Error("GetJSONMetricHandler json.NewDecoder", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	zap.L().Debug("GetJSONMetricHandler", zap.Reflect("json.NewDecoder2", metricReq))
 	metric, err := h.service.GetMetric(&metricReq)
