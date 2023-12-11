@@ -1,14 +1,12 @@
 package models
 
-type MetricType string
-
 const (
-	Gauge   MetricType = "gauge"
-	Counter MetricType = "counter"
+	Gauge   string = "gauge"
+	Counter string = "counter"
 )
 
 type Metric struct {
 	Value any
 	Name  string
-	Type  MetricType
+	Type  string
 }

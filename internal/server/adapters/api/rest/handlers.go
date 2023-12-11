@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"text/template"
 
+	"github.com/VoevodinAnton/metrics/internal/pkg/constants"
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
 	"github.com/VoevodinAnton/metrics/internal/server/adapters/middlewares"
 	"github.com/go-chi/chi/v5"
@@ -18,11 +19,6 @@ const (
 	metricTypeURLParam  = "metricType"
 	metricNameURLParam  = "metricName"
 	metricValueURLParam = "metricValue"
-
-	ContentTypeHeader = "Content-Type"
-	ContentTypeText   = "text/plain; charset=utf-8"
-	ContentTypeHTML   = "text/html; charset=utf-8"
-	ContentTypeJSON   = "application/json"
 )
 
 type Handler struct {
@@ -62,7 +58,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set(ContentTypeHeader, ContentTypeText)
+	w.Header().Set(constants.ContentTypeHeader, constants.ContentTypeText)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -76,7 +72,7 @@ func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	w.Header().Set(ContentTypeHeader, ContentTypeText)
+	w.Header().Set(constants.ContentTypeHeader, constants.ContentTypeText)
 
 	switch metricType {
 	case domain.Counter:
@@ -118,7 +114,7 @@ func (h *Handler) GetMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set(ContentTypeHeader, ContentTypeHTML)
+	w.Header().Set(constants.ContentTypeHeader, constants.ContentTypeHTML)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pageBuffer.Bytes())
 }
@@ -136,7 +132,7 @@ func (h *Handler) UpdateJSONMetricHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set(ContentTypeHeader, ContentTypeJSON)
+	w.Header().Set(constants.ContentTypeHeader, constants.ContentTypeHTML)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -158,7 +154,7 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set(ContentTypeHeader, ContentTypeJSON)
+	w.Header().Set(constants.ContentTypeHeader, constants.ContentTypeJSON)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(metricResp)
 }

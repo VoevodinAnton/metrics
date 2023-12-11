@@ -18,8 +18,8 @@ const (
 type Store interface {
 	GetGaugeMetrics() (map[string]models.Metric, error)
 	GetCounterMetrics() (map[string]models.Metric, error)
-	UpdateCounter(update *models.Metric) error
-	UpdateGauge(update *models.Metric) error
+	UpdateCounter(update models.Metric) error
+	UpdateGauge(update models.Metric) error
 }
 
 type Backuper struct {
@@ -102,10 +102,10 @@ func (b *Backuper) RestoreMetricsFromFile() error {
 		if metric.Type == models.Counter {
 			v, _ := metric.Value.(float64)
 			metric.Value = toInt64(int64(v))
-			_ = b.store.UpdateCounter(&metric)
+			_ = b.store.UpdateCounter(metric)
 		}
 		if metric.Type == models.Gauge {
-			_ = b.store.UpdateGauge(&metric)
+			_ = b.store.UpdateGauge(metric)
 		}
 	}
 

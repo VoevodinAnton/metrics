@@ -7,10 +7,10 @@ import (
 )
 
 type Store interface {
-	UpdateGauge(metric *models.Metric) error
-	GetGauge(name string) (*models.Metric, error)
-	UpdateCounter(metric *models.Metric) error
-	GetCounter(name string) (*models.Metric, error)
+	UpdateGauge(metric models.Metric) error
+	GetGauge(name string) (models.Metric, error)
+	UpdateCounter(metric models.Metric) error
+	GetCounter(name string) (models.Metric, error)
 	GetCounterMetrics() (map[string]models.Metric, error)
 	GetGaugeMetrics() (map[string]models.Metric, error)
 }
@@ -26,15 +26,15 @@ func New(store Store) *Service {
 }
 
 func (s *Service) GetMetric(metric *domain.Metrics) (*domain.Metrics, error) {
-	var metricResp *models.Metric
+	var metricResp models.Metric
 	var err error
 	switch metric.MType {
-	case string(models.Gauge):
+	case models.Gauge:
 		metricResp, err = s.store.GetGauge(metric.ID)
 		if err != nil {
 			return nil, errors.Wrap(err, "GetGauge")
 		}
-	case string(models.Counter):
+	case models.Counter:
 		metricResp, err = s.store.GetCounter(metric.ID)
 		if err != nil {
 			return nil, errors.Wrap(err, "GetCounter")
@@ -47,12 +47,12 @@ func (s *Service) GetMetric(metric *domain.Metrics) (*domain.Metrics, error) {
 func (s *Service) UpdateMetric(metric *domain.Metrics) error {
 	metricUpdate := requestToMetric(metric)
 	switch metric.MType {
-	case string(models.Gauge):
+	case models.Gauge:
 		err := s.store.UpdateGauge(metricUpdate)
 		if err != nil {
 			return errors.Wrap(err, "UpdateGauge")
 		}
-	case string(models.Counter):
+	case models.Counter:
 		err := s.store.UpdateCounter(metricUpdate)
 		if err != nil {
 			return errors.Wrap(err, "UpdateCounter")
@@ -73,10 +73,10 @@ func (s *Service) GetMetrics() (*[]domain.Metrics, error) {
 	}
 	resp := make([]domain.Metrics, 0, len(counterMetrics)+len(gaugeMetrics))
 	for _, v := range counterMetrics {
-		resp = append(resp, *metricToResponse(&v))
+		resp = append(resp, *metricToResponse(v))
 	}
 	for _, v := range gaugeMetrics {
-		resp = append(resp, *metricToResponse(&v))
+		resp = append(resp, *metricToResponse(v))
 	}
 
 	return &resp, nil

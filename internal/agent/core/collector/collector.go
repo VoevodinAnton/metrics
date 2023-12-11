@@ -4,21 +4,24 @@ import (
 	"math/rand"
 	"reflect"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/VoevodinAnton/metrics/internal/agent/config"
-	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
 )
 
 type Collector struct {
-	metrics map[string]domain.Metrics
-	cfg     *config.Config
+	gaugeMetrics   map[string]float64
+	counterMetrics map[string]int64
+	cfg            *config.Config
+	sync.Mutex
 }
 
 func NewCollector(cfg *config.Config) *Collector {
 	return &Collector{
-		cfg:     cfg,
-		metrics: make(map[string]domain.Metrics),
+		cfg:            cfg,
+		gaugeMetrics:   make(map[string]float64),
+		counterMetrics: make(map[string]int64),
 	}
 }
 
@@ -35,38 +38,44 @@ func (c *Collector) updateMetrics() {
 
 	memStatsValue := reflect.ValueOf(memStats)
 
+	c.Lock()
+	defer c.Unlock()
 	for metricName := range c.cfg.RuntimeMetrics {
 		v := memStatsValue.FieldByName(metricName)
-		var gaugeMetric domain.Metrics
+
+		var floatValue float64
 		if v.CanUint() {
-			floatValue := float64(v.Uint())
-			gaugeMetric = domain.Metrics{ID: metricName, MType: domain.Gauge, Value: toFloat64(floatValue)}
+			floatValue = float64(v.Uint())
 		}
 		if v.CanFloat() {
-			gaugeMetric = domain.Metrics{ID: metricName, MType: domain.Gauge, Value: toFloat64(v.Float())}
+			floatValue = v.Float()
 		}
 
-		c.metrics[metricName] = gaugeMetric
+		c.gaugeMetrics[metricName] = floatValue
 	}
 
-	c.metrics["RandomValue"] = domain.Metrics{ID: "RandomValue", MType: domain.Gauge, Value: getRandomValue()}
-	c.metrics["PollCount"] = domain.Metrics{ID: "PollCount", MType: domain.Counter, Delta: toInt64(int64(1))}
+	c.gaugeMetrics["RandomValue"] = getRandomValue()
+	c.counterMetrics["PollCount"]++
 }
 
-func (c *Collector) GetMetrics() map[string]domain.Metrics {
-	return c.metrics
+func (c *Collector) GetGaugeMetrics() map[string]float64 {
+	return c.gaugeMetrics
 }
 
-func getRandomValue() *float64 {
+func (c *Collector) GetCounterMetrics() map[string]int64 {
+	return c.counterMetrics
+}
+
+func (c *Collector) ResetCounter() {
+	c.Lock()
+	defer c.Unlock()
+	for k := range c.counterMetrics {
+		c.counterMetrics[k] = 0
+	}
+}
+
+func getRandomValue() float64 {
 	const value = 100
 	randValue := float64(rand.Intn(value))
-	return &randValue
-}
-
-func toInt64(i int64) *int64 {
-	return &i
-}
-
-func toFloat64(f float64) *float64 {
-	return &f
+	return randValue
 }

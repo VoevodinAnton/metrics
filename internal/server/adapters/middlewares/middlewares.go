@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/VoevodinAnton/metrics/internal/pkg/constants"
 	"github.com/pkg/errors"
 )
 
 const (
 	contentEncoding = "contentEncoding"
-	gzipEncoding    = "gzip"
 )
 
 type MiddlewareManager interface {
@@ -28,13 +28,13 @@ func NewMiddlewareManager() *middlewareManager {
 
 func (mw *middlewareManager) GzipCompressHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var found bool
+		var supportsGzip bool
 		for _, encodingHeader := range r.Header.Values("Accept-Encoding") {
-			if strings.Contains(encodingHeader, gzipEncoding) {
-				found = true
+			if strings.Contains(encodingHeader, constants.GzipEncoding) {
+				supportsGzip = true
 			}
 		}
-		if !found {
+		if !supportsGzip {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -48,26 +48,30 @@ func (mw *middlewareManager) GzipCompressHandle(next http.Handler) http.Handler 
 			_ = gz.Close()
 		}()
 
-		w.Header().Set(contentEncoding, gzipEncoding)
+		w.Header().Set(contentEncoding, constants.GzipEncoding)
 		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
 	})
 }
 
 func (mw *middlewareManager) GzipDecompressHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var sendsGzip bool
 		for _, encodingHeader := range r.Header.Values(contentEncoding) {
-			if strings.Contains(encodingHeader, gzipEncoding) {
-				reader, err := gzip.NewReader(r.Body)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-				defer func() {
-					_ = reader.Close()
-				}()
-
-				r.Body = http.MaxBytesReader(w, reader, http.DefaultMaxHeaderBytes)
+			if strings.Contains(encodingHeader, constants.GzipEncoding) {
+				sendsGzip = true
 			}
+		}
+		if sendsGzip {
+			reader, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			defer func() {
+				_ = reader.Close()
+			}()
+
+			r.Body = http.MaxBytesReader(w, reader, http.DefaultMaxHeaderBytes)
 		}
 
 		next.ServeHTTP(w, r)

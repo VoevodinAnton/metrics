@@ -9,7 +9,7 @@ import (
 
 func TestStorage_UpdateGauge(t *testing.T) {
 	type args struct {
-		Metric *models.Metric
+		Metric models.Metric
 	}
 	tests := []struct {
 		name string
@@ -19,7 +19,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		{
 			name: "gauge positive value",
 			args: args{
-				Metric: &models.Metric{
+				Metric: models.Metric{
 					Name:  "SomeGaugeMetric",
 					Type:  models.Gauge,
 					Value: 10.0,
@@ -30,7 +30,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		{
 			name: "gauge negative value",
 			args: args{
-				Metric: &models.Metric{
+				Metric: models.Metric{
 					Name:  "SomeGaugeMetric",
 					Type:  models.Gauge,
 					Value: -10.0,
@@ -41,7 +41,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 		{
 			name: "gauge zero value",
 			args: args{
-				Metric: &models.Metric{
+				Metric: models.Metric{
 					Name:  "SomeGaugeMetric",
 					Type:  models.Gauge,
 					Value: 0.0,
@@ -50,13 +50,22 @@ func TestStorage_UpdateGauge(t *testing.T) {
 			want: 0.0,
 		},
 	}
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint: dupl // this is test
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Storage{}
-			_ = s.UpdateGauge(tt.args.Metric)
+			err := s.UpdateGauge(tt.args.Metric)
+			if err != nil {
+				t.Errorf("Failed update counter: %v", err)
+			}
 
-			m, _ := s.gaugeMetrics.Load(tt.args.Metric.Name)
-			metric, _ := m.(*models.Metric)
+			m, found := s.gaugeMetrics.Load(tt.args.Metric.Name)
+			if !found {
+				t.Errorf("Metric %s not found", tt.args.Metric.Name)
+			}
+			metric, ok := m.(models.Metric)
+			if !ok {
+				t.Error("Metric type expected")
+			}
 
 			assert.Equal(t, tt.want, metric.Value)
 		})
@@ -65,7 +74,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 
 func TestStorage_UpdateCounter(t *testing.T) {
 	type args struct {
-		Metric *models.Metric
+		Metric models.Metric
 	}
 	tests := []struct {
 		name string
@@ -75,9 +84,9 @@ func TestStorage_UpdateCounter(t *testing.T) {
 		{
 			name: "counter positive value",
 			args: args{
-				Metric: &models.Metric{
+				Metric: models.Metric{
 					Name:  "SomeCounterMetric",
-					Type:  "",
+					Type:  models.Counter,
 					Value: int64(10),
 				},
 			},
@@ -86,7 +95,7 @@ func TestStorage_UpdateCounter(t *testing.T) {
 		{
 			name: "counter zero value",
 			args: args{
-				Metric: &models.Metric{
+				Metric: models.Metric{
 					Name:  "SomeCounterMetric",
 					Type:  models.Counter,
 					Value: int64(0),
@@ -95,13 +104,22 @@ func TestStorage_UpdateCounter(t *testing.T) {
 			want: 0,
 		},
 	}
-	for _, tt := range tests {
+	for _, tt := range tests { //nolint: dupl // this is test
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Storage{}
-			_ = s.UpdateCounter(tt.args.Metric)
+			err := s.UpdateCounter(tt.args.Metric)
+			if err != nil {
+				t.Errorf("Failed update counter: %v", err)
+			}
 
-			m, _ := s.counterMetrics.Load(tt.args.Metric.Name)
-			metric, _ := m.(*models.Metric)
+			m, found := s.counterMetrics.Load(tt.args.Metric.Name)
+			if !found {
+				t.Errorf("Metric %s not found", tt.args.Metric.Name)
+			}
+			metric, ok := m.(models.Metric)
+			if !ok {
+				t.Error("Metric type expected")
+			}
 
 			assert.Equal(t, tt.want, metric.Value)
 		})
