@@ -19,7 +19,7 @@ import (
 
 const (
 	updateURLTemplate = "http://%s/update"
-	clientTimeout     = 60 * time.Second
+	clientTimeout     = 10 * time.Second
 )
 
 type Store interface {
@@ -147,7 +147,7 @@ func (u *Uploader) Upload(url string, m domain.Metrics) error {
 			return nil, errors.Wrap(err, "body.Close")
 		}
 
-		return nil, nil
+		return nil, nil //nolint: nilnil // currect return
 	})
 	if err != nil {
 		return errors.Wrap(err, "cb.Execute")
