@@ -10,10 +10,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	contentEncoding = "contentEncoding"
-)
-
 type MiddlewareManager interface {
 	GzipCompressHandle(next http.Handler) http.Handler
 	GzipDecompressHandle(next http.Handler) http.Handler
@@ -29,7 +25,7 @@ func NewMiddlewareManager() *middlewareManager {
 func (mw *middlewareManager) GzipCompressHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var supportsGzip bool
-		for _, encodingHeader := range r.Header.Values("Accept-Encoding") {
+		for _, encodingHeader := range r.Header.Values(constants.AcceptEncodingHeader) {
 			if strings.Contains(encodingHeader, constants.GzipEncoding) {
 				supportsGzip = true
 			}
@@ -48,7 +44,7 @@ func (mw *middlewareManager) GzipCompressHandle(next http.Handler) http.Handler 
 			_ = gz.Close()
 		}()
 
-		w.Header().Set(contentEncoding, constants.GzipEncoding)
+		w.Header().Set(constants.ContentEncodingHeader, constants.GzipEncoding)
 		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
 	})
 }
@@ -56,11 +52,12 @@ func (mw *middlewareManager) GzipCompressHandle(next http.Handler) http.Handler 
 func (mw *middlewareManager) GzipDecompressHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var sendsGzip bool
-		for _, encodingHeader := range r.Header.Values(contentEncoding) {
+		for _, encodingHeader := range r.Header.Values(constants.ContentEncodingHeader) {
 			if strings.Contains(encodingHeader, constants.GzipEncoding) {
 				sendsGzip = true
 			}
 		}
+
 		if sendsGzip {
 			reader, err := gzip.NewReader(r.Body)
 			if err != nil {
