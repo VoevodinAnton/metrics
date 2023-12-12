@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	defaultStoreInterval = 300 * time.Second
+	defaultStoreInterval = 300
 )
 
 type Config struct {
@@ -27,7 +27,7 @@ type Server struct {
 
 func InitConfig() *Config {
 	var serverAddress string
-	var storeInterval time.Duration
+	var storeInterval int
 	var restore bool
 	var filePath string
 
@@ -37,7 +37,7 @@ func InitConfig() *Config {
 	envRestore := os.Getenv("RESTORE")
 
 	flag.StringVar(&serverAddress, "a", "localhost:8080", "HTTP server endpoint address")
-	flag.DurationVar(&storeInterval, "i", defaultStoreInterval, "Interval in seconds to save metrics to disk")
+	flag.IntVar(&storeInterval, "i", defaultStoreInterval, "Interval in seconds to save metrics to disk")
 	flag.StringVar(&filePath, "f", "/tmp/metrics-db.json", "Path to file where metrics are saved")
 	flag.BoolVar(&restore, "r", true, "Restore metrics from file on start")
 	flag.Parse()
@@ -46,7 +46,7 @@ func InitConfig() *Config {
 		serverAddress = envServerAddress
 	}
 	if envStoreInterval != "" {
-		storeInterval, _ = time.ParseDuration(envStoreInterval)
+		storeInterval, _ = strconv.Atoi(envStoreInterval)
 	}
 	if envFilePath != "" {
 		filePath = envFilePath
@@ -63,7 +63,7 @@ func InitConfig() *Config {
 			Development: true,
 			Level:       "debug",
 		},
-		StoreInterval: storeInterval,
+		StoreInterval: time.Duration(storeInterval) * time.Second,
 		FilePath:      filePath,
 		Restore:       restore,
 	}
