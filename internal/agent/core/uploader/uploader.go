@@ -75,10 +75,6 @@ func (u *Uploader) sendGaugeMetrics() error {
 			Value: &value,
 		}
 
-		if m.ID == "MCacheSys" {
-			zap.L().Info("", zap.Float64("MCacheSys 2", *m.Value))
-		}
-
 		err := u.Upload(url, m)
 		if err != nil {
 			return errors.Wrap(err, "upload gauge")
