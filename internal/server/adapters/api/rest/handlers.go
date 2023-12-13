@@ -12,6 +12,7 @@ import (
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
 	"github.com/VoevodinAnton/metrics/internal/server/adapters/middlewares"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/zap"
 )
 
@@ -24,6 +25,7 @@ const (
 type Handler struct {
 	service Service
 	mw      middlewares.MiddlewareManager
+	db      *pgxpool.Pool
 }
 
 func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
@@ -158,4 +160,14 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(constants.ContentTypeHeader, constants.ContentTypeJSON)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(metricResp)
+}
+
+func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) {
+	err := h.db.Ping(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

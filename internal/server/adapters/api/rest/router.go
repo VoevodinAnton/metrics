@@ -9,6 +9,7 @@ import (
 	"github.com/VoevodinAnton/metrics/pkg/logging"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 )
 
@@ -28,10 +29,11 @@ type Router struct {
 	r   *chi.Mux
 }
 
-func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareManager) *Router {
+func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareManager, db *pgxpool.Pool) *Router {
 	h := Handler{
 		service: service,
 		mw:      mw,
+		db:      db,
 	}
 	r := chi.NewRouter()
 
@@ -49,6 +51,9 @@ func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareMan
 	gzipGroup.Post("/update", h.UpdateJSONMetricHandler)
 	gzipGroup.Get("/", h.GetMetricsHandler)
 	gzipGroup.Post("/value", h.GetJSONMetricHandler)
+
+	utilGroup := r.Group(nil)
+	utilGroup.Get("/ping", h.Ping)
 
 	return &Router{
 		r:   r,

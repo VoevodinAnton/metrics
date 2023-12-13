@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,16 +13,25 @@ import (
 	"github.com/VoevodinAnton/metrics/internal/server/config"
 	"github.com/VoevodinAnton/metrics/internal/server/core/service"
 	logger "github.com/VoevodinAnton/metrics/pkg/logging"
+	"github.com/VoevodinAnton/metrics/pkg/postgres"
 	"go.uber.org/zap"
 )
 
 func main() {
-	cfg := config.InitConfig()
+	cfg, err := config.InitConfig()
+	if err != nil {
+		panic(err)
+	}
 	logger.NewLogger(cfg.Logger)
 	defer logger.Close()
 	mw := middlewares.NewMiddlewareManager()
 	storage := memory.NewStorage()
 	backup := backup.New(cfg, storage)
+
+	db, err := postgres.NewPgxConn(context.Background(), cfg.Postgres)
+	if err != nil {
+		zap.L().Fatal("postgres.NewPgxConn", zap.Error(err))
+	}
 
 	if cfg.Restore {
 		err := backup.RestoreMetricsFromFile()
@@ -42,7 +52,7 @@ func main() {
 	}
 
 	service := service.New(storage)
-	r := api.NewRouter(cfg, service, mw)
+	r := api.NewRouter(cfg, service, mw, db)
 
 	listenErr := make(chan error, 1)
 	listenSignals := make(chan os.Signal, 1)
@@ -57,7 +67,9 @@ func main() {
 	select {
 	case sig := <-listenSignals:
 		zap.L().Warn("received signal", zap.String("signal", sig.String()))
+		db.Close()
 	case err := <-listenErr:
 		zap.L().Error("", zap.Error(err))
+		db.Close()
 	}
 }
