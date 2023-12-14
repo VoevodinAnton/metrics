@@ -101,7 +101,7 @@ func InitConfig() (*Config, error) {
 	if envDatabaseDSN != "" {
 		databaseDSN = envDatabaseDSN
 	}
-	fmt.Println(databaseDSN)
+
 	cfg.Server = &config.Server{
 		Address: serverAddress,
 	}

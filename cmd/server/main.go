@@ -14,6 +14,7 @@ import (
 	"github.com/VoevodinAnton/metrics/internal/server/core/service"
 	logger "github.com/VoevodinAnton/metrics/pkg/logging"
 	"github.com/VoevodinAnton/metrics/pkg/postgres"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/zap"
 )
 
@@ -28,9 +29,12 @@ func main() {
 	storage := memory.NewStorage()
 	backup := backup.New(cfg, storage)
 
-	db, err := postgres.NewPgxConn(context.Background(), cfg.Postgres)
-	if err != nil {
-		zap.L().Fatal("postgres.NewPgxConn", zap.Error(err))
+	var db *pgxpool.Pool
+	if cfg.Postgres.DatabaseDSN != "" {
+		db, err = postgres.NewPgxConn(context.Background(), cfg.Postgres)
+		if err != nil {
+			zap.L().Fatal("postgres.NewPgxConn", zap.Error(err))
+		}
 	}
 
 	if cfg.Restore {
