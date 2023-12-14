@@ -1,14 +1,12 @@
 package models
 
-type MetricType int
-
 const (
-	Gauge MetricType = iota
-	Counter
+	Gauge   string = "gauge"
+	Counter string = "counter"
 )
 
 type Metric struct {
 	Value any
 	Name  string
-	Type  MetricType
+	Type  string
 }

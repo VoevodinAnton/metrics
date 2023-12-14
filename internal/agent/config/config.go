@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/VoevodinAnton/metrics/pkg/config"
 )
 
 const (
@@ -13,6 +15,7 @@ const (
 )
 
 type Config struct {
+	Logger         *config.Logger
 	CustomMetrics  map[string]string
 	RuntimeMetrics map[string]string
 	ServerAddress  string
@@ -61,6 +64,7 @@ func InitConfig() *Config {
 			"HeapSys":       "gauge",
 			"LastGC":        "gauge",
 			"Lookups":       "gauge",
+			"NumGC":         "gauge",
 			"MCacheInuse":   "gauge",
 			"MCacheSys":     "gauge",
 			"MSpanInuse":    "gauge",
@@ -78,6 +82,10 @@ func InitConfig() *Config {
 		CustomMetrics: map[string]string{
 			"PollCount":   "counter",
 			"RandomValue": "gauge",
+		},
+		Logger: &config.Logger{
+			Development: true,
+			Level:       "debug",
 		},
 	}
 }

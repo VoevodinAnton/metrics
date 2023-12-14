@@ -1,17 +1,18 @@
 package service
 
 import (
-	"github.com/VoevodinAnton/metrics/internal/models"
+	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
+	"github.com/VoevodinAnton/metrics/internal/server/models"
 	"github.com/pkg/errors"
 )
 
 type Store interface {
 	UpdateGauge(metric models.Metric) error
-	GetGauge(name string) (*models.Metric, error)
+	GetGauge(name string) (models.Metric, error)
 	UpdateCounter(metric models.Metric) error
-	GetCounter(name string) (*models.Metric, error)
-	GetCounterMetrics() (map[string]*models.Metric, error)
-	GetGaugeMetrics() (map[string]*models.Metric, error)
+	GetCounter(name string) (models.Metric, error)
+	GetCounterMetrics() (map[string]models.Metric, error)
+	GetGaugeMetrics() (map[string]models.Metric, error)
 }
 
 type Service struct {
@@ -24,35 +25,35 @@ func New(store Store) *Service {
 	}
 }
 
-func (s *Service) GetMetric(req *models.Metric) (*models.Metric, error) {
-	var metricResp *models.Metric
-	switch req.Type {
+func (s *Service) GetMetric(metric *domain.Metrics) (*domain.Metrics, error) {
+	var metricResp models.Metric
+	var err error
+	switch metric.MType {
 	case models.Gauge:
-		gauge, err := s.store.GetGauge(req.Name)
+		metricResp, err = s.store.GetGauge(metric.ID)
 		if err != nil {
 			return nil, errors.Wrap(err, "GetGauge")
 		}
-		metricResp = gauge
 	case models.Counter:
-		counter, err := s.store.GetCounter(req.Name)
+		metricResp, err = s.store.GetCounter(metric.ID)
 		if err != nil {
 			return nil, errors.Wrap(err, "GetCounter")
 		}
-		metricResp = counter
 	}
 
-	return metricResp, nil
+	return metricToResponse(metricResp), nil
 }
 
-func (s *Service) UpdateMetric(req models.Metric) error {
-	switch req.Type {
+func (s *Service) UpdateMetric(metric *domain.Metrics) error {
+	metricUpdate := requestToMetric(metric)
+	switch metric.MType {
 	case models.Gauge:
-		err := s.store.UpdateGauge(req)
+		err := s.store.UpdateGauge(metricUpdate)
 		if err != nil {
 			return errors.Wrap(err, "UpdateGauge")
 		}
 	case models.Counter:
-		err := s.store.UpdateCounter(req)
+		err := s.store.UpdateCounter(metricUpdate)
 		if err != nil {
 			return errors.Wrap(err, "UpdateCounter")
 		}
@@ -61,7 +62,7 @@ func (s *Service) UpdateMetric(req models.Metric) error {
 	return nil
 }
 
-func (s *Service) GetMetrics() ([]*models.Metric, error) {
+func (s *Service) GetMetrics() (*[]domain.Metrics, error) {
 	counterMetrics, err := s.store.GetCounterMetrics()
 	if err != nil {
 		return nil, errors.Wrap(err, "GetCounterMetrics")
@@ -70,13 +71,13 @@ func (s *Service) GetMetrics() ([]*models.Metric, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "GetGaugeMetrics")
 	}
-	resp := make([]*models.Metric, 0, len(counterMetrics)+len(gaugeMetrics))
+	resp := make([]domain.Metrics, 0, len(counterMetrics)+len(gaugeMetrics))
 	for _, v := range counterMetrics {
-		resp = append(resp, v)
+		resp = append(resp, *metricToResponse(v))
 	}
 	for _, v := range gaugeMetrics {
-		resp = append(resp, v)
+		resp = append(resp, *metricToResponse(v))
 	}
 
-	return resp, nil
+	return &resp, nil
 }
