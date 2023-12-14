@@ -32,7 +32,6 @@ type Router struct {
 func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareManager, db *pgxpool.Pool) *Router {
 	h := Handler{
 		service: service,
-		mw:      mw,
 		db:      db,
 	}
 	r := chi.NewRouter()

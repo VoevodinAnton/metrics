@@ -10,7 +10,6 @@ import (
 
 	"github.com/VoevodinAnton/metrics/internal/pkg/constants"
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
-	"github.com/VoevodinAnton/metrics/internal/server/adapters/middlewares"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/zap"
@@ -24,7 +23,6 @@ const (
 
 type Handler struct {
 	service Service
-	mw      middlewares.MiddlewareManager
 	db      *pgxpool.Pool
 }
 
