@@ -71,9 +71,13 @@ func main() {
 	select {
 	case sig := <-listenSignals:
 		zap.L().Warn("received signal", zap.String("signal", sig.String()))
-		db.Close()
+		if db != nil {
+			db.Close()
+		}
 	case err := <-listenErr:
 		zap.L().Error("", zap.Error(err))
-		db.Close()
+		if db != nil {
+			db.Close()
+		}
 	}
 }

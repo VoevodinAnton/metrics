@@ -73,7 +73,7 @@ func InitConfig() (*Config, error) {
 	var filePath string
 	var databaseDSN string
 
-	envServerAddress := os.Getenv(serverAddress)
+	envServerAddress := os.Getenv(serverAddressEnv)
 	envStoreInterval := os.Getenv(storeIntervalEnv)
 	envFilePath := os.Getenv(fileStoragePassEnv)
 	envRestore := os.Getenv(restoreEnv)
