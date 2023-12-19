@@ -43,7 +43,7 @@ func (s *Store) GetCounterMetric(ctx context.Context, name string) (models.Metri
 }
 
 func (s *Store) PutCounterMetric(ctx context.Context, update models.Metric) error {
-	// zap.L().Debug("store.counter.putCounterMetric", zap.Reflect("counterMetricPut", update))
+	zap.L().Debug("store.counter.putCounterMetric", zap.Reflect("counterMetricPut", update))
 	m, ok := s.counterMetrics.Load(update.Name)
 	if !ok {
 		s.counterMetrics.Store(update.Name, update)
@@ -73,7 +73,7 @@ func (s *Store) PutCounterMetrics(ctx context.Context, updates []models.Metric) 
 }
 
 func (s *Store) PutGaugeMetric(ctx context.Context, update models.Metric) error {
-	// zap.L().Debug("store.memory.putGaugeMetric", zap.Reflect("gaugeMetricPut", update))
+	zap.L().Debug("store.memory.putGaugeMetric", zap.Reflect("gaugeMetricPut", update))
 	s.gaugeMetrics.Store(update.Name, update)
 	return nil
 }

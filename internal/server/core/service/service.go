@@ -64,7 +64,7 @@ func (s *Service) UpdateMetric(ctx context.Context, metric *domain.Metrics) erro
 			return errors.Wrap(err, "putCounterMetric")
 		}
 	}
-	return s.updateMetric(ctx, metric)
+	return nil
 }
 
 func (s *Service) UpdatesMetrics(ctx context.Context, metrics *[]domain.Metrics) error {
