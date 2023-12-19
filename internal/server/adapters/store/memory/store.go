@@ -24,7 +24,7 @@ func NewStorage() *Store {
 	return &Store{}
 }
 
-func (s *Store) GetGauge(ctx context.Context, name string) (models.Metric, error) {
+func (s *Store) GetGaugeMetric(ctx context.Context, name string) (models.Metric, error) {
 	value, ok := s.gaugeMetrics.Load(name)
 	if !ok {
 		return models.Metric{}, errors.Wrap(ErrMetricNotFound, name)
@@ -33,7 +33,7 @@ func (s *Store) GetGauge(ctx context.Context, name string) (models.Metric, error
 	return value.(models.Metric), nil
 }
 
-func (s *Store) GetCounter(ctx context.Context, name string) (models.Metric, error) {
+func (s *Store) GetCounterMetric(ctx context.Context, name string) (models.Metric, error) {
 	value, ok := s.counterMetrics.Load(name)
 	if !ok {
 		return models.Metric{}, errors.Wrap(ErrMetricNotFound, name)
@@ -42,8 +42,8 @@ func (s *Store) GetCounter(ctx context.Context, name string) (models.Metric, err
 	return value.(models.Metric), nil
 }
 
-func (s *Store) PutCounter(ctx context.Context, update models.Metric) error {
-	zap.L().Debug("store.counter.putGauge", zap.Reflect("counterMetricPut", update))
+func (s *Store) PutCounterMetric(ctx context.Context, update models.Metric) error {
+	//zap.L().Debug("store.counter.putCounterMetric", zap.Reflect("counterMetricPut", update))
 	m, ok := s.counterMetrics.Load(update.Name)
 	if !ok {
 		s.counterMetrics.Store(update.Name, update)
@@ -61,9 +61,31 @@ func (s *Store) PutCounter(ctx context.Context, update models.Metric) error {
 	return nil
 }
 
-func (s *Store) PutGauge(ctx context.Context, update models.Metric) error {
-	zap.L().Debug("store.memory.putGauge", zap.Reflect("gaugeMetricPut", update))
+func (s *Store) PutCounterMetrics(ctx context.Context, updates []models.Metric) error {
+	zap.L().Debug("store.memory.putCounterMetrics", zap.Reflect("counterMetricsPut", updates))
+	for _, update := range updates {
+		if err := s.PutCounterMetric(ctx, update); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Store) PutGaugeMetric(ctx context.Context, update models.Metric) error {
+	//zap.L().Debug("store.memory.putGaugeMetric", zap.Reflect("gaugeMetricPut", update))
 	s.gaugeMetrics.Store(update.Name, update)
+	return nil
+}
+
+func (s *Store) PutGaugeMetrics(ctx context.Context, updates []models.Metric) error {
+	zap.L().Debug("store.memory.putGaugeMetrics", zap.Reflect("gaugeMetricsPut", updates))
+	for _, update := range updates {
+		if err := s.PutGaugeMetric(ctx, update); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

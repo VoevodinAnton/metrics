@@ -29,8 +29,9 @@ func main() {
 	if err != nil {
 		zap.L().Fatal("store.NewStore", zap.Error(err))
 	}
-	backup := backup.New(cfg, storage)
+	defer storage.Close()
 
+	backup := backup.New(cfg, storage)
 	if cfg.Restore {
 		err := backup.RestoreMetricsFromFile(ctx)
 		if err != nil {
@@ -61,7 +62,6 @@ func main() {
 	}()
 
 	zap.L().Sugar().Infof("The server is listening and serving the address %s", cfg.Server.Address)
-
 	select {
 	case sig := <-listenSignals:
 		zap.L().Warn("received signal", zap.String("signal", sig.String()))

@@ -17,8 +17,8 @@ const (
 )
 
 type Store interface {
-	PutCounter(ctx context.Context, update models.Metric) error
-	PutGauge(ctx context.Context, update models.Metric) error
+	PutCounterMetric(ctx context.Context, update models.Metric) error
+	PutGaugeMetric(ctx context.Context, update models.Metric) error
 	GetCounterMetrics(ctx context.Context) (map[string]models.Metric, error)
 	GetGaugeMetrics(ctx context.Context) (map[string]models.Metric, error)
 }
@@ -103,10 +103,10 @@ func (b *Backuper) RestoreMetricsFromFile(ctx context.Context) error {
 		if metric.Type == models.Counter {
 			v, _ := metric.Value.(float64)
 			metric.Value = int64(v)
-			_ = b.store.PutCounter(ctx, metric)
+			_ = b.store.PutCounterMetric(ctx, metric)
 		}
 		if metric.Type == models.Gauge {
-			_ = b.store.PutGauge(ctx, metric)
+			_ = b.store.PutGaugeMetric(ctx, metric)
 		}
 	}
 

@@ -2,9 +2,10 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/VoevodinAnton/metrics/internal/server/models"
+
+	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -20,10 +21,8 @@ func NewStore(db *pgxpool.Pool) *Store {
 	}
 }
 
-func (s *Store) GetGauge(ctx context.Context, name string) (models.Metric, error) {
-	const query = `SELECT name, value FROM gauge_metrics WHERE name = $1
-		ORDER BY updated_at DESC LIMIT 1;`
-	row := s.db.QueryRow(ctx, query, name)
+func (s *Store) GetGaugeMetric(ctx context.Context, name string) (models.Metric, error) {
+	row := s.db.QueryRow(ctx, getGaugeMetricQuery, name)
 	var metric = models.Metric{
 		Type: models.Gauge,
 	}
@@ -31,29 +30,28 @@ func (s *Store) GetGauge(ctx context.Context, name string) (models.Metric, error
 	if err != nil {
 		return models.Metric{}, errors.Wrap(err, "row.Scan gauge")
 	}
-	fmt.Println(metric)
+
 	return metric, nil
 }
 
-func (s *Store) GetCounter(ctx context.Context, name string) (models.Metric, error) {
-	const query = `SELECT name, value FROM counter_metrics WHERE name = $1 
-		ORDER BY updated_at DESC LIMIT 1;`
-	row := s.db.QueryRow(ctx, query, name)
+func (s *Store) GetCounterMetric(ctx context.Context, name string) (models.Metric, error) {
+	row := s.db.QueryRow(ctx, getCounterMetricQuery, name)
 	var metric = models.Metric{
 		Type: models.Counter,
 	}
-	err := row.Scan(&metric.Name, &metric.Value)
+	var value pgtype.Numeric
+	err := row.Scan(&metric.Name, &value)
 	if err != nil {
 		return models.Metric{}, errors.Wrap(err, "row.Scan counter")
 	}
+	metric.Value = value.Int.Int64()
 
 	return metric, nil
 }
 
-func (s *Store) PutCounter(ctx context.Context, update models.Metric) error {
-	zap.L().Debug("store.postgres.putCounter", zap.Reflect("counterMetricPut", update))
-	const query = `INSERT INTO counter_metrics (name, value) VALUES ($1, $2);`
-	_, err := s.db.Exec(ctx, query, update.Name, update.Value)
+func (s *Store) PutCounterMetric(ctx context.Context, update models.Metric) error {
+	zap.L().Debug("store.postgres.putCounterMetric", zap.Reflect("counterMetricPut", update))
+	_, err := s.db.Exec(ctx, insertCounterMetricQuery, update.Name, update.Value)
 	if err != nil {
 		return errors.Wrap(err, "db.Exec counter")
 	}
@@ -61,10 +59,15 @@ func (s *Store) PutCounter(ctx context.Context, update models.Metric) error {
 	return nil
 }
 
-func (s *Store) PutGauge(ctx context.Context, update models.Metric) error {
-	zap.L().Debug("store.postgres.putGauge", zap.Reflect("gaugeMetricPut", update))
-	const query = `INSERT INTO gauge_metrics (name, value) VALUES ($1, $2);`
-	_, err := s.db.Exec(ctx, query, update.Name, update.Value)
+func (s *Store) PutCounterMetrics(ctx context.Context, updates []models.Metric) error {
+	zap.L().Debug("store.postgres.putCounterMetrics", zap.Reflect("counterMetricsPut", updates))
+
+	return s.putMetrics(ctx, insertCounterMetricQueryName, insertCounterMetricQuery, updates)
+}
+
+func (s *Store) PutGaugeMetric(ctx context.Context, update models.Metric) error {
+	zap.L().Debug("store.postgres.putGaugeMetric", zap.Reflect("gaugeMetricPut", update))
+	_, err := s.db.Exec(ctx, insertGaugeMetricQuery, update.Name, update.Value)
 	if err != nil {
 		return errors.Wrap(err, "db.Exec gauge")
 	}
@@ -72,24 +75,40 @@ func (s *Store) PutGauge(ctx context.Context, update models.Metric) error {
 	return nil
 }
 
-func (s *Store) GetCounterMetrics(ctx context.Context) (map[string]models.Metric, error) {
-	const query = `SELECT name, value FROM counter_metrics cm1 WHERE updated_at  = (
-		SELECT MAX(updated_at)
-		FROM counter_metrics cm2
-		WHERE cm2.name = cm1.name
-	);`
+func (s *Store) PutGaugeMetrics(ctx context.Context, updates []models.Metric) error {
+	zap.L().Debug("store.postgres.putGaugeMetrics", zap.Reflect("gaugeMetricsPut", updates))
 
-	return s.getMetrics(ctx, query)
+	return s.putMetrics(ctx, insertGaugeMetricQueryName, insertGaugeMetricQuery, updates)
+}
+
+func (s *Store) putMetrics(ctx context.Context, queryName, query string, updates []models.Metric) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return errors.Wrap(err, "db.Begin")
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+	_, err = tx.Prepare(ctx, queryName, query)
+	if err != nil {
+		return errors.Wrap(err, "tx.Prepare")
+	}
+	for _, update := range updates {
+		_, err := tx.Exec(ctx, queryName, update.Name, update.Value)
+		if err != nil {
+			return errors.Wrap(err, "tx.Exec")
+		}
+	}
+
+	return tx.Commit(ctx) //nolint: wrapcheck //unnecessary
+}
+
+func (s *Store) GetCounterMetrics(ctx context.Context) (map[string]models.Metric, error) {
+	return s.getMetrics(ctx, getCounterMetricsQuery)
 }
 
 func (s *Store) GetGaugeMetrics(ctx context.Context) (map[string]models.Metric, error) {
-	const query = `SELECT name, value FROM gauge_metrics gm1 WHERE updated_at  = (
-		SELECT MAX(updated_at)
-		FROM gauge_metrics gm2
-		WHERE gm2.name = gm1.name
-	);`
-
-	return s.getMetrics(ctx, query)
+	return s.getMetrics(ctx, getGaugeMetricsQuery)
 }
 
 func (s *Store) getMetrics(ctx context.Context, query string) (map[string]models.Metric, error) {

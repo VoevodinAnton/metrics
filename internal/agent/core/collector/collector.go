@@ -33,12 +33,11 @@ func (c *Collector) Run() {
 }
 
 func (c *Collector) updateMetrics() {
+	c.Lock()
+	defer c.Unlock()
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	memStatsValue := reflect.ValueOf(memStats)
-
-	c.Lock()
-	defer c.Unlock()
 	for metricName := range c.cfg.RuntimeMetrics {
 		v := memStatsValue.FieldByName(metricName)
 
@@ -67,10 +66,10 @@ func (c *Collector) GetCounterMetrics() map[string]int64 {
 
 func (c *Collector) ResetCounter() {
 	c.Lock()
-	defer c.Unlock()
 	for k := range c.counterMetrics {
 		c.counterMetrics[k] = 0
 	}
+	c.Unlock()
 }
 
 func getRandomValue() float64 {

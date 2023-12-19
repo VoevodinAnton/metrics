@@ -12,12 +12,14 @@ import (
 )
 
 type Store interface {
-	GetGauge(ctx context.Context, name string) (models.Metric, error)
-	GetCounter(ctx context.Context, name string) (models.Metric, error)
-	PutCounter(ctx context.Context, update models.Metric) error
-	PutGauge(ctx context.Context, update models.Metric) error
+	GetGaugeMetric(ctx context.Context, name string) (models.Metric, error)
+	GetCounterMetric(ctx context.Context, name string) (models.Metric, error)
+	PutCounterMetric(ctx context.Context, update models.Metric) error
+	PutGaugeMetric(ctx context.Context, update models.Metric) error
 	GetCounterMetrics(ctx context.Context) (map[string]models.Metric, error)
 	GetGaugeMetrics(ctx context.Context) (map[string]models.Metric, error)
+	PutCounterMetrics(ctx context.Context, updates []models.Metric) error
+	PutGaugeMetrics(ctx context.Context, updates []models.Metric) error
 	Ping(ctx context.Context) error
 	Close()
 }

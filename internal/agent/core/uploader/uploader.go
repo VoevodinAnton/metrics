@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	updateURLTemplate = "http://%s/update"
+	updateURLTemplate = "http://%s/updates"
 	clientTimeout     = 10 * time.Second
 )
 
@@ -64,50 +64,53 @@ func (u *Uploader) Run() {
 }
 
 func (u *Uploader) sendGaugeMetrics() error {
+	u.Lock()
+	defer u.Unlock()
 	metrics := u.store.GetGaugeMetrics()
+	metricsUpload := make([]domain.Metrics, 0, len(metrics))
 	for name, value := range metrics {
 		value := value
-		url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
-
 		m := domain.Metrics{
 			ID:    name,
 			MType: domain.Gauge,
 			Value: &value,
 		}
-
-		err := u.Upload(url, m)
-		if err != nil {
-			return errors.Wrap(err, "upload gauge")
-		}
+		metricsUpload = append(metricsUpload, m)
+	}
+	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
+	err := u.Upload(url, metricsUpload)
+	if err != nil {
+		return errors.Wrap(err, "upload gauge")
 	}
 
 	return nil
 }
 
 func (u *Uploader) sendCounterMetrics() error {
+	u.Lock()
+	defer u.Unlock()
 	metrics := u.store.GetCounterMetrics()
+	metricsUpload := make([]domain.Metrics, 0, len(metrics))
 	for name, value := range metrics {
 		value := value
-		url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
-
 		m := domain.Metrics{
 			ID:    name,
 			MType: domain.Counter,
 			Delta: &value,
 		}
-
-		err := u.Upload(url, m)
-		if err != nil {
-			return errors.Wrap(err, "upload counter")
-		}
-
-		u.store.ResetCounter()
+		metricsUpload = append(metricsUpload, m)
+	}
+	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
+	err := u.Upload(url, metricsUpload)
+	if err != nil {
+		return errors.Wrap(err, "upload counter")
 	}
 
+	u.store.ResetCounter()
 	return nil
 }
 
-func (u *Uploader) Upload(url string, m domain.Metrics) error {
+func (u *Uploader) Upload(url string, m []domain.Metrics) error {
 	_, err := u.cb.Execute(func() (interface{}, error) {
 		client := http.Client{
 			Timeout: clientTimeout,

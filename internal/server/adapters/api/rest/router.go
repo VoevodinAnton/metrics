@@ -21,6 +21,7 @@ var (
 type Service interface {
 	GetMetric(ctx context.Context, metric *domain.Metrics) (*domain.Metrics, error)
 	UpdateMetric(ctx context.Context, metric *domain.Metrics) error
+	UpdatesMetrics(ctx context.Context, metrics *[]domain.Metrics) error
 	GetMetrics(ctx context.Context) (*[]domain.Metrics, error)
 	Ping(ctx context.Context) error
 }
@@ -50,6 +51,7 @@ func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareMan
 	gzipGroup.Post("/update", h.UpdateJSONMetricHandler)
 	gzipGroup.Get("/", h.GetMetricsHandler)
 	gzipGroup.Post("/value", h.GetJSONMetricHandler)
+	gzipGroup.Post("/updates", h.UpdatesJSONMetricsHandler)
 
 	utilGroup := r.Group(nil)
 	utilGroup.Get("/ping", h.Ping)

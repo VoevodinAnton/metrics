@@ -21,6 +21,14 @@ func requestToMetric(m *domain.Metrics) models.Metric {
 	return metric
 }
 
+func requestToMetrics(ms *[]domain.Metrics) []models.Metric {
+	metrics := make([]models.Metric, 0, len(*ms))
+	for _, m := range *ms {
+		metrics = append(metrics, requestToMetric(&m))
+	}
+	return metrics
+}
+
 func metricToResponse(m models.Metric) *domain.Metrics {
 	metric := &domain.Metrics{
 		ID:    m.Name,

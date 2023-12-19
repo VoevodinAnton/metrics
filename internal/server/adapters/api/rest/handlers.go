@@ -117,22 +117,6 @@ func (h *Handler) GetMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(pageBuffer.Bytes())
 }
 
-func (h *Handler) UpdateJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
-	var metricUpdate domain.Metrics
-	if err := json.NewDecoder(r.Body).Decode(&metricUpdate); err != nil {
-		zap.L().Error("UpdateJSONMetricHandler json.NewDecoder", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	}
-	err := h.service.UpdateMetric(r.Context(), &metricUpdate)
-	if err != nil {
-		zap.L().Error("UpdateJSONMetricHandler service.UpdateMetric", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
 func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var metricReq domain.Metrics
 	if err := json.NewDecoder(r.Body).Decode(&metricReq); err != nil {
@@ -146,7 +130,6 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-
 	metricResp, err := json.Marshal(metric)
 	if err != nil {
 		zap.L().Error("GetJSONMetricHandler json.Marshal", zap.Error(err))
@@ -156,6 +139,40 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(constants.ContentTypeHeader, constants.ContentTypeJSON)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(metricResp)
+}
+
+func (h *Handler) UpdateJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
+	var metricUpdate domain.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&metricUpdate); err != nil {
+		zap.L().Error("UpdateJSONMetricHandler json.NewDecoder", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err := h.service.UpdateMetric(r.Context(), &metricUpdate)
+	if err != nil {
+		zap.L().Error("UpdateJSONMetricHandler service.UpdateMetric", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) UpdatesJSONMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	var metricsReq []domain.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&metricsReq); err != nil {
+		zap.L().Error("UpdatesJSONMetricsHandler json.NewDecoder", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err := h.service.UpdatesMetrics(r.Context(), &metricsReq)
+	if err != nil {
+		zap.L().Error("UpdatesJSONMetricsHandler service.UpdatesMetrics", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) {

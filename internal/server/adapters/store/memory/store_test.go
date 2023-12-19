@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStorage_PutGauge(t *testing.T) {
+func TestStorage_PutGaugeMetric(t *testing.T) {
 	type args struct {
 		Metric models.Metric
 	}
@@ -54,7 +54,7 @@ func TestStorage_PutGauge(t *testing.T) {
 	for _, tt := range tests { //nolint: dupl // this is test
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Store{}
-			err := s.PutGauge(context.Background(), tt.args.Metric)
+			err := s.PutGaugeMetric(context.Background(), tt.args.Metric)
 			if err != nil {
 				t.Errorf("Failed update counter: %v", err)
 			}
@@ -73,7 +73,7 @@ func TestStorage_PutGauge(t *testing.T) {
 	}
 }
 
-func TestStorage_PutCounter(t *testing.T) {
+func TestStorage_PutCounterMetric(t *testing.T) {
 	type args struct {
 		Metric models.Metric
 	}
@@ -108,7 +108,7 @@ func TestStorage_PutCounter(t *testing.T) {
 	for _, tt := range tests { //nolint: dupl // this is test
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Store{}
-			err := s.PutCounter(context.Background(), tt.args.Metric)
+			err := s.PutCounterMetric(context.Background(), tt.args.Metric)
 			if err != nil {
 				t.Errorf("Failed update counter: %v", err)
 			}
