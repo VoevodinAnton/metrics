@@ -34,7 +34,6 @@ func (c *Collector) Run() {
 
 func (c *Collector) updateMetrics() {
 	c.Lock()
-	defer c.Unlock()
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	memStatsValue := reflect.ValueOf(memStats)
@@ -54,6 +53,7 @@ func (c *Collector) updateMetrics() {
 
 	c.gaugeMetrics["RandomValue"] = getRandomValue()
 	c.counterMetrics["PollCount"]++
+	c.Unlock()
 }
 
 func (c *Collector) GetGaugeMetrics() map[string]float64 {

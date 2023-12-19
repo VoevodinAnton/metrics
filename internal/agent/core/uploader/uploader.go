@@ -64,8 +64,6 @@ func (u *Uploader) Run() {
 }
 
 func (u *Uploader) sendGaugeMetrics() error {
-	u.Lock()
-	defer u.Unlock()
 	metrics := u.store.GetGaugeMetrics()
 	metricsUpload := make([]domain.Metrics, 0, len(metrics))
 	for name, value := range metrics {
