@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"time"
@@ -16,10 +17,10 @@ const (
 )
 
 type Store interface {
-	GetGaugeMetrics() (map[string]models.Metric, error)
-	GetCounterMetrics() (map[string]models.Metric, error)
-	UpdateCounter(update models.Metric) error
-	UpdateGauge(update models.Metric) error
+	PutCounter(ctx context.Context, update models.Metric) error
+	PutGauge(ctx context.Context, update models.Metric) error
+	GetCounterMetrics(ctx context.Context) (map[string]models.Metric, error)
+	GetGaugeMetrics(ctx context.Context) (map[string]models.Metric, error)
 }
 
 type Backuper struct {
@@ -34,10 +35,10 @@ func New(cfg *config.Config, store Store) *Backuper {
 	}
 }
 
-func (b *Backuper) Run() {
+func (b *Backuper) Run(ctx context.Context) {
 	ticker := time.NewTicker(b.cfg.StoreInterval)
 	for range ticker.C {
-		err := b.SaveMetricsToFile()
+		err := b.SaveMetricsToFile(ctx)
 		if err != nil {
 			zap.L().Error("saveMetricsToFile", zap.Error(err))
 			continue
@@ -46,13 +47,13 @@ func (b *Backuper) Run() {
 	}
 }
 
-func (b *Backuper) SaveMetricsToFile() error {
+func (b *Backuper) SaveMetricsToFile(ctx context.Context) error {
 	metrics := make(map[string]models.Metric)
-	gaugeMetrics, err := b.store.GetGaugeMetrics()
+	gaugeMetrics, err := b.store.GetGaugeMetrics(ctx)
 	if err != nil {
 		return errors.Wrap(err, "store.GetGaugeMetrics")
 	}
-	counterMetrics, err := b.store.GetCounterMetrics()
+	counterMetrics, err := b.store.GetCounterMetrics(ctx)
 	if err != nil {
 		return errors.Wrap(err, "store.GetCounterMetrics")
 	}
@@ -76,7 +77,7 @@ func (b *Backuper) SaveMetricsToFile() error {
 	return nil
 }
 
-func (b *Backuper) RestoreMetricsFromFile() error {
+func (b *Backuper) RestoreMetricsFromFile(ctx context.Context) error {
 	file, err := os.Open(b.cfg.FilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -102,10 +103,10 @@ func (b *Backuper) RestoreMetricsFromFile() error {
 		if metric.Type == models.Counter {
 			v, _ := metric.Value.(float64)
 			metric.Value = int64(v)
-			_ = b.store.UpdateCounter(metric)
+			_ = b.store.PutCounter(ctx, metric)
 		}
 		if metric.Type == models.Gauge {
-			_ = b.store.UpdateGauge(metric)
+			_ = b.store.PutGauge(ctx, metric)
 		}
 	}
 

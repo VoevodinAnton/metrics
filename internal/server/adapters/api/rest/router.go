@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
@@ -18,9 +19,10 @@ var (
 )
 
 type Service interface {
-	GetMetric(metric *domain.Metrics) (*domain.Metrics, error)
-	UpdateMetric(metric *domain.Metrics) error
-	GetMetrics() (*[]domain.Metrics, error)
+	GetMetric(ctx context.Context, metric *domain.Metrics) (*domain.Metrics, error)
+	UpdateMetric(ctx context.Context, metric *domain.Metrics) error
+	GetMetrics(ctx context.Context) (*[]domain.Metrics, error)
+	Ping(ctx context.Context) error
 }
 
 type Router struct {
@@ -31,7 +33,6 @@ type Router struct {
 func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareManager) *Router {
 	h := Handler{
 		service: service,
-		mw:      mw,
 	}
 	r := chi.NewRouter()
 
@@ -49,6 +50,9 @@ func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareMan
 	gzipGroup.Post("/update", h.UpdateJSONMetricHandler)
 	gzipGroup.Get("/", h.GetMetricsHandler)
 	gzipGroup.Post("/value", h.GetJSONMetricHandler)
+
+	utilGroup := r.Group(nil)
+	utilGroup.Get("/ping", h.Ping)
 
 	return &Router{
 		r:   r,
