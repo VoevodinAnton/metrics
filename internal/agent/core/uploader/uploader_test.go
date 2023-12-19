@@ -33,7 +33,7 @@ func (c *TestCollector) ResetCounter() {
 	}
 }
 
-func NewServer(t *testing.T, expectedMetric domain.Metrics) *httptest.Server {
+func NewServer(t *testing.T, expectedMetrics []domain.Metrics) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -53,27 +53,29 @@ func NewServer(t *testing.T, expectedMetric domain.Metrics) *httptest.Server {
 
 		t.Log(string(body))
 
-		var metric domain.Metrics
-		if err := json.Unmarshal(body, &metric); err != nil {
+		var metrics []domain.Metrics
+		if err := json.Unmarshal(body, &metrics); err != nil {
 			t.Fatalf("json.Unmarshal: %v", err)
 		}
 
-		require.Equal(t, expectedMetric, metric)
+		require.Equal(t, expectedMetrics, metrics)
 	}))
 }
 
 func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is test
 	tests := []struct {
-		name           string
-		expectedMetric domain.Metrics
-		sendMetric     map[string]int64
+		name            string
+		expectedMetrics []domain.Metrics
+		sendMetric      map[string]int64
 	}{
 		{
 			name: "test counter",
-			expectedMetric: domain.Metrics{
-				ID:    "TestCounter",
-				MType: domain.Counter,
-				Delta: toInt64Pointer(1),
+			expectedMetrics: []domain.Metrics{
+				{
+					ID:    "TestCounter",
+					MType: domain.Counter,
+					Delta: toInt64Pointer(1),
+				},
 			},
 			sendMetric: map[string]int64{
 				"TestCounter": 1,
@@ -82,7 +84,7 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svr := NewServer(t, tt.expectedMetric)
+			svr := NewServer(t, tt.expectedMetrics)
 			defer svr.Close()
 
 			var cfg = &config.Config{
@@ -105,16 +107,18 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 
 func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is test
 	tests := []struct {
-		name           string
-		expectedMetric domain.Metrics
-		sendMetric     map[string]float64
+		name            string
+		expectedMetrics []domain.Metrics
+		sendMetric      map[string]float64
 	}{
 		{
 			name: "test gauge",
-			expectedMetric: domain.Metrics{
-				ID:    "TestGauge",
-				MType: domain.Gauge,
-				Value: toFloat64Pointer(2.5),
+			expectedMetrics: []domain.Metrics{
+				{
+					ID:    "TestGauge",
+					MType: domain.Gauge,
+					Value: toFloat64Pointer(2.5),
+				},
 			},
 			sendMetric: map[string]float64{
 				"TestGauge": 2.5,
@@ -123,7 +127,7 @@ func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is tes
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svr := NewServer(t, tt.expectedMetric)
+			svr := NewServer(t, tt.expectedMetrics)
 			defer svr.Close()
 
 			var cfg = &config.Config{
