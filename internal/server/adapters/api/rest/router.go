@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
@@ -9,7 +10,6 @@ import (
 	"github.com/VoevodinAnton/metrics/pkg/logging"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 )
 
@@ -19,9 +19,10 @@ var (
 )
 
 type Service interface {
-	GetMetric(metric *domain.Metrics) (*domain.Metrics, error)
-	UpdateMetric(metric *domain.Metrics) error
-	GetMetrics() (*[]domain.Metrics, error)
+	GetMetric(ctx context.Context, metric *domain.Metrics) (*domain.Metrics, error)
+	UpdateMetric(ctx context.Context, metric *domain.Metrics) error
+	GetMetrics(ctx context.Context) (*[]domain.Metrics, error)
+	Ping(ctx context.Context) error
 }
 
 type Router struct {
@@ -29,10 +30,9 @@ type Router struct {
 	r   *chi.Mux
 }
 
-func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareManager, db *pgxpool.Pool) *Router {
+func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareManager) *Router {
 	h := Handler{
 		service: service,
-		db:      db,
 	}
 	r := chi.NewRouter()
 

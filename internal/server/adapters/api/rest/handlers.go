@@ -11,7 +11,6 @@ import (
 	"github.com/VoevodinAnton/metrics/internal/pkg/constants"
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/zap"
 )
 
@@ -23,7 +22,6 @@ const (
 
 type Handler struct {
 	service Service
-	db      *pgxpool.Pool
 }
 
 func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +51,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	req.MType = metricType
 
-	err = h.service.UpdateMetric(&req)
+	err = h.service.UpdateMetric(r.Context(), &req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -67,7 +65,7 @@ func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 	metricName := chi.URLParam(r, metricNameURLParam)
 
 	metricReq := &domain.Metrics{ID: metricName, MType: metricType}
-	metric, err := h.service.GetMetric(metricReq)
+	metric, err := h.service.GetMetric(r.Context(), metricReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -101,7 +99,7 @@ func (h *Handler) GetMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	</html>
 	`))
 
-	metrics, err := h.service.GetMetrics()
+	metrics, err := h.service.GetMetrics(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -125,7 +123,7 @@ func (h *Handler) UpdateJSONMetricHandler(w http.ResponseWriter, r *http.Request
 		zap.L().Error("UpdateJSONMetricHandler json.NewDecoder", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
-	err := h.service.UpdateMetric(&metricUpdate)
+	err := h.service.UpdateMetric(r.Context(), &metricUpdate)
 	if err != nil {
 		zap.L().Error("UpdateJSONMetricHandler service.UpdateMetric", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -142,7 +140,7 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	metric, err := h.service.GetMetric(&metricReq)
+	metric, err := h.service.GetMetric(r.Context(), &metricReq)
 	if err != nil {
 		zap.L().Error("GetJSONMetricHandler service.GetMetric", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -161,7 +159,7 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) {
-	err := h.db.Ping(r.Context())
+	err := h.service.Ping(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
