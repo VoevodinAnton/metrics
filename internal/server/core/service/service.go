@@ -93,24 +93,6 @@ func (s *Service) UpdatesMetrics(ctx context.Context, metrics *[]domain.Metrics)
 	return nil
 }
 
-func (s *Service) updateMetric(ctx context.Context, metric *domain.Metrics) error {
-	metricUpdate := requestToMetric(metric)
-	switch metric.MType {
-	case models.Gauge:
-		err := s.store.PutGaugeMetric(ctx, metricUpdate)
-		if err != nil {
-			return errors.Wrap(err, "updateGauge")
-		}
-	case models.Counter:
-		err := s.store.PutCounterMetric(ctx, metricUpdate)
-		if err != nil {
-			return errors.Wrap(err, "updateCounter")
-		}
-	}
-
-	return nil
-}
-
 func (s *Service) GetMetrics(ctx context.Context) (*[]domain.Metrics, error) {
 	counterMetrics, err := s.store.GetCounterMetrics(ctx)
 	if err != nil {
