@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -8,7 +9,7 @@ import (
 	api "github.com/VoevodinAnton/metrics/internal/server/adapters/api/rest"
 	"github.com/VoevodinAnton/metrics/internal/server/adapters/backup"
 	"github.com/VoevodinAnton/metrics/internal/server/adapters/middlewares"
-	"github.com/VoevodinAnton/metrics/internal/server/adapters/store/memory"
+	"github.com/VoevodinAnton/metrics/internal/server/adapters/store"
 	"github.com/VoevodinAnton/metrics/internal/server/config"
 	"github.com/VoevodinAnton/metrics/internal/server/core/service"
 	logger "github.com/VoevodinAnton/metrics/pkg/logging"
@@ -16,25 +17,33 @@ import (
 )
 
 func main() {
-	cfg := config.InitConfig()
+	cfg, err := config.InitConfig()
+	if err != nil {
+		panic(err)
+	}
 	logger.NewLogger(cfg.Logger)
 	defer logger.Close()
 	mw := middlewares.NewMiddlewareManager()
-	storage := memory.NewStorage()
-	backup := backup.New(cfg, storage)
+	ctx := context.Background()
+	storage, err := store.NewStore(cfg)
+	if err != nil {
+		zap.L().Fatal("store.NewStore", zap.Error(err))
+	}
+	defer storage.Close()
 
+	backup := backup.New(cfg, storage)
 	if cfg.Restore {
-		err := backup.RestoreMetricsFromFile()
+		err := backup.RestoreMetricsFromFile(ctx)
 		if err != nil {
 			zap.L().Error("empty start", zap.Error(err))
 		}
 	}
 	if cfg.FilePath != "" {
 		go func() {
-			backup.Run()
+			backup.Run(ctx)
 		}()
 		defer func() {
-			err := backup.SaveMetricsToFile()
+			err := backup.SaveMetricsToFile(ctx)
 			if err != nil {
 				zap.L().Error("backup.SaveMetricsToFile", zap.Error(err))
 			}
@@ -53,11 +62,12 @@ func main() {
 	}()
 
 	zap.L().Sugar().Infof("The server is listening and serving the address %s", cfg.Server.Address)
-
 	select {
 	case sig := <-listenSignals:
 		zap.L().Warn("received signal", zap.String("signal", sig.String()))
+		storage.Close()
 	case err := <-listenErr:
 		zap.L().Error("", zap.Error(err))
+		storage.Close()
 	}
 }

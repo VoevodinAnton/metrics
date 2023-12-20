@@ -10,7 +10,6 @@ import (
 
 	"github.com/VoevodinAnton/metrics/internal/pkg/constants"
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
-	"github.com/VoevodinAnton/metrics/internal/server/adapters/middlewares"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
@@ -23,7 +22,6 @@ const (
 
 type Handler struct {
 	service Service
-	mw      middlewares.MiddlewareManager
 }
 
 func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +51,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	req.MType = metricType
 
-	err = h.service.UpdateMetric(&req)
+	err = h.service.UpdateMetric(r.Context(), &req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -67,7 +65,7 @@ func (h *Handler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 	metricName := chi.URLParam(r, metricNameURLParam)
 
 	metricReq := &domain.Metrics{ID: metricName, MType: metricType}
-	metric, err := h.service.GetMetric(metricReq)
+	metric, err := h.service.GetMetric(r.Context(), metricReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -101,7 +99,7 @@ func (h *Handler) GetMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	</html>
 	`))
 
-	metrics, err := h.service.GetMetrics()
+	metrics, err := h.service.GetMetrics(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -119,22 +117,6 @@ func (h *Handler) GetMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(pageBuffer.Bytes())
 }
 
-func (h *Handler) UpdateJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
-	var metricUpdate domain.Metrics
-	if err := json.NewDecoder(r.Body).Decode(&metricUpdate); err != nil {
-		zap.L().Error("UpdateJSONMetricHandler json.NewDecoder", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	}
-	err := h.service.UpdateMetric(&metricUpdate)
-	if err != nil {
-		zap.L().Error("UpdateJSONMetricHandler service.UpdateMetric", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
 func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var metricReq domain.Metrics
 	if err := json.NewDecoder(r.Body).Decode(&metricReq); err != nil {
@@ -142,13 +124,12 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	metric, err := h.service.GetMetric(&metricReq)
+	metric, err := h.service.GetMetric(r.Context(), &metricReq)
 	if err != nil {
 		zap.L().Error("GetJSONMetricHandler service.GetMetric", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-
 	metricResp, err := json.Marshal(metric)
 	if err != nil {
 		zap.L().Error("GetJSONMetricHandler json.Marshal", zap.Error(err))
@@ -158,4 +139,48 @@ func (h *Handler) GetJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(constants.ContentTypeHeader, constants.ContentTypeJSON)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(metricResp)
+}
+
+func (h *Handler) UpdateJSONMetricHandler(w http.ResponseWriter, r *http.Request) {
+	var metricUpdate domain.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&metricUpdate); err != nil {
+		zap.L().Error("UpdateJSONMetricHandler json.NewDecoder", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err := h.service.UpdateMetric(r.Context(), &metricUpdate)
+	if err != nil {
+		zap.L().Error("UpdateJSONMetricHandler service.UpdateMetric", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) UpdatesJSONMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	var metricsReq []domain.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&metricsReq); err != nil {
+		zap.L().Error("UpdatesJSONMetricsHandler json.NewDecoder", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err := h.service.UpdatesMetrics(r.Context(), &metricsReq)
+	if err != nil {
+		zap.L().Error("UpdatesJSONMetricsHandler service.UpdatesMetrics", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) {
+	err := h.service.Ping(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
