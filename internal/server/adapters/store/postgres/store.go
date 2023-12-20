@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/VoevodinAnton/metrics/internal/server/models"
 
@@ -51,7 +52,7 @@ func (s *Store) GetCounterMetric(ctx context.Context, name string) (models.Metri
 
 func (s *Store) PutCounterMetric(ctx context.Context, update models.Metric) error {
 	zap.L().Debug("store.postgres.putCounterMetric", zap.Reflect("counterMetricPut", update))
-	_, err := s.db.Exec(ctx, insertCounterMetricQuery, update.Name, update.Value)
+	_, err := s.db.Exec(ctx, insertCounterMetricQuery, update.Name, update.Value, time.Now().UnixNano())
 	if err != nil {
 		return errors.Wrap(err, "db.Exec counter")
 	}
@@ -67,7 +68,7 @@ func (s *Store) PutCounterMetrics(ctx context.Context, updates []models.Metric) 
 
 func (s *Store) PutGaugeMetric(ctx context.Context, update models.Metric) error {
 	zap.L().Debug("store.postgres.putGaugeMetric", zap.Reflect("gaugeMetricPut", update))
-	_, err := s.db.Exec(ctx, insertGaugeMetricQuery, update.Name, update.Value)
+	_, err := s.db.Exec(ctx, insertGaugeMetricQuery, update.Name, update.Value, time.Now().UnixNano())
 	if err != nil {
 		return errors.Wrap(err, "db.Exec gauge")
 	}
@@ -94,7 +95,7 @@ func (s *Store) putMetrics(ctx context.Context, queryName, query string, updates
 		return errors.Wrap(err, "tx.Prepare")
 	}
 	for _, update := range updates {
-		_, err := tx.Exec(ctx, queryName, update.Name, update.Value)
+		_, err := tx.Exec(ctx, queryName, update.Name, update.Value, time.Now().UnixNano())
 		if err != nil {
 			return errors.Wrap(err, "tx.Exec")
 		}
