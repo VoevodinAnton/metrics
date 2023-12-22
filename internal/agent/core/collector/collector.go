@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	reflect_copy "golang.design/x/reflect"
+
 	"github.com/VoevodinAnton/metrics/internal/agent/config"
 )
 
@@ -34,6 +36,7 @@ func (c *Collector) Run() {
 
 func (c *Collector) updateMetrics() {
 	c.Lock()
+	defer c.Unlock()
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	memStatsValue := reflect.ValueOf(memStats)
@@ -53,23 +56,26 @@ func (c *Collector) updateMetrics() {
 
 	c.gaugeMetrics["RandomValue"] = getRandomValue()
 	c.counterMetrics["PollCount"]++
-	c.Unlock()
 }
 
 func (c *Collector) GetGaugeMetrics() map[string]float64 {
-	return c.gaugeMetrics
+	c.Lock()
+	defer c.Unlock()
+	return reflect_copy.DeepCopy[map[string]float64](c.gaugeMetrics)
 }
 
 func (c *Collector) GetCounterMetrics() map[string]int64 {
-	return c.counterMetrics
+	c.Lock()
+	defer c.Unlock()
+	return reflect_copy.DeepCopy[map[string]int64](c.counterMetrics)
 }
 
 func (c *Collector) ResetCounter() {
 	c.Lock()
+	defer c.Unlock()
 	for k := range c.counterMetrics {
 		c.counterMetrics[k] = 0
 	}
-	c.Unlock()
 }
 
 func getRandomValue() float64 {
