@@ -1,6 +1,6 @@
 BEGIN TRANSACTION;
 
-DROP TABLE employees;
-DROP TABLE positions;
+DROP TABLE gauge_metrics;
+DROP TABLE counter_metrics;
 
 COMMIT;

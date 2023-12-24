@@ -47,3 +47,11 @@ stop-pg:
 .PHONY: clean-data
 clean-data:
 	sudo rm -rf ./db/data/
+
+
+.PHONY: migrate-up
+migrate-up:
+	docker run --rm \\
+    -v $(realpath ./db/migrations):/migrations \\
+    migrate/migrate:v4.16.2 \\
+        -path=/migrations  -database "postgres://gopher:gopher@172.17.0.2:5432/metrics_db?sslmode=disable"  up
