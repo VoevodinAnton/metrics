@@ -1,13 +1,14 @@
 package memory
 
 import (
+	"context"
 	"testing"
 
 	"github.com/VoevodinAnton/metrics/internal/server/models"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStorage_UpdateGauge(t *testing.T) {
+func TestStorage_PutGaugeMetric(t *testing.T) {
 	type args struct {
 		Metric models.Metric
 	}
@@ -52,8 +53,8 @@ func TestStorage_UpdateGauge(t *testing.T) {
 	}
 	for _, tt := range tests { //nolint: dupl // this is test
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Storage{}
-			err := s.UpdateGauge(tt.args.Metric)
+			s := &Store{}
+			err := s.PutGaugeMetric(context.Background(), tt.args.Metric)
 			if err != nil {
 				t.Errorf("Failed update counter: %v", err)
 			}
@@ -72,7 +73,7 @@ func TestStorage_UpdateGauge(t *testing.T) {
 	}
 }
 
-func TestStorage_UpdateCounter(t *testing.T) {
+func TestStorage_PutCounterMetric(t *testing.T) {
 	type args struct {
 		Metric models.Metric
 	}
@@ -106,8 +107,8 @@ func TestStorage_UpdateCounter(t *testing.T) {
 	}
 	for _, tt := range tests { //nolint: dupl // this is test
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Storage{}
-			err := s.UpdateCounter(tt.args.Metric)
+			s := &Store{}
+			err := s.PutCounterMetric(context.Background(), tt.args.Metric)
 			if err != nil {
 				t.Errorf("Failed update counter: %v", err)
 			}

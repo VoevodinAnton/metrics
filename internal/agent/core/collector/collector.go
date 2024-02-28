@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	reflect_copy "golang.design/x/reflect"
+
 	"github.com/VoevodinAnton/metrics/internal/agent/config"
 )
 
@@ -33,12 +35,11 @@ func (c *Collector) Run() {
 }
 
 func (c *Collector) updateMetrics() {
+	c.Lock()
+	defer c.Unlock()
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	memStatsValue := reflect.ValueOf(memStats)
-
-	c.Lock()
-	defer c.Unlock()
 	for metricName := range c.cfg.RuntimeMetrics {
 		v := memStatsValue.FieldByName(metricName)
 
@@ -58,11 +59,15 @@ func (c *Collector) updateMetrics() {
 }
 
 func (c *Collector) GetGaugeMetrics() map[string]float64 {
-	return c.gaugeMetrics
+	c.Lock()
+	defer c.Unlock()
+	return reflect_copy.DeepCopy[map[string]float64](c.gaugeMetrics)
 }
 
 func (c *Collector) GetCounterMetrics() map[string]int64 {
-	return c.counterMetrics
+	c.Lock()
+	defer c.Unlock()
+	return reflect_copy.DeepCopy[map[string]int64](c.counterMetrics)
 }
 
 func (c *Collector) ResetCounter() {
