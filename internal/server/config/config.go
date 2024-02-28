@@ -27,6 +27,7 @@ const (
 	fileStoragePassEnv = "FILE_STORAGE_PATH"
 	restoreEnv         = "RESTORE"
 	databaseDSNEnv     = "DATABASE_DSN"
+	keyEnv             = "KEY"
 
 	yaml = "yaml"
 )
@@ -36,6 +37,7 @@ type Config struct {
 	Postgres      *config.Postgres
 	Server        *config.Server
 	FilePath      string
+	Key           string
 	StoreInterval time.Duration
 	Restore       bool
 }
@@ -72,18 +74,21 @@ func InitConfig() (*Config, error) {
 	var restore bool
 	var filePath string
 	var databaseDSN string
+	var key string
 
 	envServerAddress := os.Getenv(serverAddressEnv)
 	envStoreInterval := os.Getenv(storeIntervalEnv)
 	envFilePath := os.Getenv(fileStoragePassEnv)
 	envRestore := os.Getenv(restoreEnv)
 	envDatabaseDSN := os.Getenv(databaseDSNEnv)
+	envKey := os.Getenv(keyEnv)
 
 	flag.StringVar(&serverAddress, "a", "localhost:8080", "HTTP server endpoint address")
 	flag.IntVar(&storeInterval, "i", defaultStoreInterval, "Interval in seconds to save metrics to disk")
 	flag.StringVar(&filePath, "f", "/tmp/metrics-db.json", "Path to file where metrics are saved")
 	flag.BoolVar(&restore, "r", true, "Restore metrics from file on start")
 	flag.StringVar(&databaseDSN, "d", "", "Connection string to postgres")
+	flag.StringVar(&key, "k", "", "secret key for signing data")
 	flag.Parse()
 
 	if envServerAddress != "" {
@@ -101,12 +106,16 @@ func InitConfig() (*Config, error) {
 	if envDatabaseDSN != "" {
 		databaseDSN = envDatabaseDSN
 	}
+	if envKey != "" {
+		key = envKey
+	}
 
 	cfg.Server = &config.Server{
 		Address: serverAddress,
 	}
 	cfg.StoreInterval = time.Duration(storeInterval) * time.Second
 	cfg.FilePath = filePath
+	cfg.Key = key
 	cfg.Restore = restore
 	cfg.Postgres = &config.Postgres{
 		DatabaseDSN: databaseDSN,

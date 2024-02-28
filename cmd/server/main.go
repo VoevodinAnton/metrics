@@ -23,7 +23,7 @@ func main() {
 	}
 	logger.NewLogger(cfg.Logger)
 	defer logger.Close()
-	mw := middlewares.NewMiddlewareManager()
+	mw := middlewares.NewMiddlewareManager(cfg.Key)
 	ctx := context.Background()
 	storage, err := store.NewStore(cfg)
 	if err != nil {
