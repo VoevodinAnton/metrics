@@ -12,6 +12,7 @@ import (
 const (
 	defaultPollInterval   = 2
 	defaultReportInterval = 10
+	defaultRateLimit      = 10
 )
 
 type Config struct {
@@ -19,24 +20,27 @@ type Config struct {
 	CustomMetrics  map[string]string
 	RuntimeMetrics map[string]string
 	ServerAddress  string
+	Key            string
 	PollInterval   time.Duration
 	ReportInterval time.Duration
-	Key            string
+	RateLimit      int
 }
 
 func InitConfig() *Config {
 	var serverAddress string
-	var reportInterval, pollInterval int
+	var reportInterval, pollInterval, rateLimit int
 	var key string
 
 	envServerAddress := os.Getenv("ADDRESS")
 	envReportInterval := os.Getenv("REPORT_INTERVAL")
 	envPollInterval := os.Getenv("POLL_INTERVAL")
 	envKey := os.Getenv("KEY")
+	envRateLimit := os.Getenv("RATE_LIMIT")
 
 	flag.StringVar(&serverAddress, "a", "localhost:8080", "HTTP server endpoint address")
 	flag.IntVar(&reportInterval, "r", defaultReportInterval, "Report interval in seconds")
 	flag.IntVar(&pollInterval, "p", defaultPollInterval, "Poll interval in seconds")
+	flag.IntVar(&rateLimit, "l", defaultRateLimit, "Rate limit")
 	flag.StringVar(&key, "k", "", "secret key for signing data")
 	flag.Parse()
 
@@ -52,12 +56,16 @@ func InitConfig() *Config {
 	if envKey != "" {
 		key = envKey
 	}
+	if envRateLimit != "" {
+		rateLimit, _ = strconv.Atoi(envRateLimit)
+	}
 
 	return &Config{
 		ServerAddress:  serverAddress,
 		PollInterval:   time.Duration(pollInterval) * time.Second,
 		ReportInterval: time.Duration(reportInterval) * time.Second,
 		Key:            key,
+		RateLimit:      rateLimit,
 		RuntimeMetrics: map[string]string{
 			"Alloc":         "gauge",
 			"BuckHashSys":   "gauge",

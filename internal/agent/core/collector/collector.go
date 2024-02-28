@@ -10,6 +10,7 @@ import (
 	reflect_copy "golang.design/x/reflect"
 
 	"github.com/VoevodinAnton/metrics/internal/agent/config"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 type Collector struct {
@@ -30,8 +31,23 @@ func NewCollector(cfg *config.Config) *Collector {
 func (c *Collector) Run() {
 	ticker := time.NewTicker(c.cfg.PollInterval)
 	for range ticker.C {
-		c.updateMetrics()
+		go c.updateMetrics()
+		go c.updateGopsutilMetrics()
 	}
+}
+
+func (c *Collector) updateGopsutilMetrics() {
+	c.Lock()
+	defer c.Unlock()
+	v, _ := mem.VirtualMemory() // TODO: handle error
+
+	totalMemoryValue := float64(v.Total)
+	freeMemoryValue := float64(v.Free)
+	usePersentValue := v.UsedPercent
+
+	c.gaugeMetrics["TotalMemory"] = totalMemoryValue
+	c.gaugeMetrics["FreeMemory"] = freeMemoryValue
+	c.gaugeMetrics["CPUutilization1"] = usePersentValue
 }
 
 func (c *Collector) updateMetrics() {
