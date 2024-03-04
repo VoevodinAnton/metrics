@@ -8,4 +8,6 @@ const (
 	ContentTypeText       = "text/plain; charset=utf-8"
 	ContentTypeHTML       = "text/html; charset=utf-8"
 	ContentTypeJSON       = "application/json"
+
+	HashSHA256 = "HashSHA256"
 )

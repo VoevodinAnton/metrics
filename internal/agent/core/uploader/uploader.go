@@ -3,6 +3,9 @@ package uploader
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -131,6 +134,18 @@ func (u *Uploader) Upload(url string, m []domain.Metrics) error {
 		if err != nil {
 			return nil, errors.Wrap(err, "http.NewRequest")
 		}
+
+		if u.cfg.Key != "" {
+			h := hmac.New(sha256.New, []byte(u.cfg.Key))
+
+			h.Write(metricsJSON)
+			metricsHash := h.Sum(nil)
+
+			hashString := hex.EncodeToString(metricsHash)
+
+			req.Header.Add(constants.HashSHA256, hashString)
+		}
+
 		req.Header.Set(constants.ContentTypeHeader, constants.ContentTypeJSON)
 		req.Header.Set(constants.ContentEncodingHeader, constants.GzipEncoding)
 		resp, err := client.Do(req)
