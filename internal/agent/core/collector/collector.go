@@ -7,15 +7,18 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
 	reflect_copy "golang.design/x/reflect"
 
 	"github.com/VoevodinAnton/metrics/internal/agent/config"
+	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
 type Collector struct {
 	gaugeMetrics   map[string]float64
 	counterMetrics map[string]int64
+	results        chan domain.UploadResult
 	cfg            *config.Config
 	sync.Mutex
 }
@@ -25,6 +28,7 @@ func NewCollector(cfg *config.Config) *Collector {
 		cfg:            cfg,
 		gaugeMetrics:   make(map[string]float64),
 		counterMetrics: make(map[string]int64),
+		results:        make(chan domain.UploadResult),
 	}
 }
 
@@ -33,13 +37,24 @@ func (c *Collector) Run() {
 	for range ticker.C {
 		go c.updateMetrics()
 		go c.updateGopsutilMetrics()
+
+		select {
+		case r := <-c.results:
+			if r.Err != nil {
+				zap.L().Error("Error sending metrics", zap.Error(r.Err))
+			}
+		default:
+		}
 	}
 }
 
 func (c *Collector) updateGopsutilMetrics() {
 	c.Lock()
 	defer c.Unlock()
-	v, _ := mem.VirtualMemory() // TODO: handle error
+	v, err := mem.VirtualMemory()
+	if err != nil {
+		c.results <- domain.UploadResult{Err: err}
+	}
 
 	totalMemoryValue := float64(v.Total)
 	freeMemoryValue := float64(v.Free)

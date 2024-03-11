@@ -9,10 +9,14 @@ import (
 	"github.com/VoevodinAnton/metrics/internal/agent/core/collector"
 	"github.com/VoevodinAnton/metrics/internal/agent/core/uploader"
 	logger "github.com/VoevodinAnton/metrics/pkg/logging"
+	"go.uber.org/zap"
 )
 
 func main() {
-	cfg := config.InitConfig()
+	cfg, err := config.InitConfig()
+	if err != nil {
+		zap.L().Fatal("", zap.Error(err))
+	}
 
 	logger.NewLogger(cfg.Logger)
 	defer logger.Close()

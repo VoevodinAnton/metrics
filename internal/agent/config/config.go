@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/VoevodinAnton/metrics/pkg/config"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -26,7 +27,8 @@ type Config struct {
 	RateLimit      int
 }
 
-func InitConfig() *Config {
+func InitConfig() (*Config, error) {
+	var err error
 	var serverAddress string
 	var reportInterval, pollInterval, rateLimit int
 	var key string
@@ -48,16 +50,25 @@ func InitConfig() *Config {
 		serverAddress = envServerAddress
 	}
 	if envReportInterval != "" {
-		reportInterval, _ = strconv.Atoi(envReportInterval)
+		reportInterval, err = strconv.Atoi(envReportInterval)
+		if err != nil {
+			return nil, errors.Wrap(err, "error parse report interval")
+		}
 	}
 	if envPollInterval != "" {
-		pollInterval, _ = strconv.Atoi(envPollInterval)
+		pollInterval, err = strconv.Atoi(envPollInterval)
+		if err != nil {
+			return nil, errors.Wrap(err, "error parse poll interval")
+		}
 	}
 	if envKey != "" {
 		key = envKey
 	}
 	if envRateLimit != "" {
-		rateLimit, _ = strconv.Atoi(envRateLimit)
+		rateLimit, err = strconv.Atoi(envRateLimit)
+		if err != nil {
+			return nil, errors.Wrap(err, "error parse rate limit")
+		}
 	}
 
 	return &Config{
@@ -103,5 +114,5 @@ func InitConfig() *Config {
 			Development: true,
 			Level:       "debug",
 		},
-	}
+	}, nil
 }

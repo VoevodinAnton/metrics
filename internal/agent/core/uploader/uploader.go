@@ -24,6 +24,7 @@ import (
 const (
 	updateURLTemplate = "http://%s/updates"
 	clientTimeout     = 10 * time.Second
+	batchSize         = 5
 )
 
 type Store interface {
@@ -32,16 +33,12 @@ type Store interface {
 	ResetCounter()
 }
 
-type UploadResult struct {
-	Err error
-}
-
 type Uploader struct {
 	cfg       *config.Config
 	cb        *gobreaker.CircuitBreaker
 	semaphore *semaphore.Semaphore
 	wg        *sync.WaitGroup
-	results   chan UploadResult
+	results   chan domain.UploadResult
 	store     Store
 	sync.Mutex
 }
@@ -58,7 +55,7 @@ func NewUploader(cfg *config.Config, store Store) *Uploader {
 		store:     store,
 		semaphore: semaphore.NewSemaphore(cfg.RateLimit),
 		wg:        &sync.WaitGroup{},
-		results:   make(chan UploadResult),
+		results:   make(chan domain.UploadResult),
 		cb:        gobreaker.NewCircuitBreaker(st),
 	}
 }
@@ -66,8 +63,8 @@ func NewUploader(cfg *config.Config, store Store) *Uploader {
 func (u *Uploader) Run() {
 	ticker := time.NewTicker(u.cfg.ReportInterval)
 	for range ticker.C {
-		u.sendGaugeMetrics()
-		u.sendCounterMetrics()
+		go u.sendGaugeMetrics()
+		go u.sendCounterMetrics()
 
 		select {
 		case r := <-u.results:
@@ -81,7 +78,8 @@ func (u *Uploader) Run() {
 
 func (u *Uploader) sendGaugeMetrics() {
 	metrics := u.store.GetGaugeMetrics()
-	metricsUpload := make([]domain.Metrics, 0, len(metrics))
+	metricsBatch := make([]domain.Metrics, 0)
+	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
 	for name, value := range metrics {
 		value := value
 		m := domain.Metrics{
@@ -89,22 +87,30 @@ func (u *Uploader) sendGaugeMetrics() {
 			MType: domain.Gauge,
 			Value: &value,
 		}
-		metricsUpload = append(metricsUpload, m)
-	}
-	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
-
-	for idx := 0; idx < 2; idx++ {
-		u.wg.Add(1)
-		go func() {
-			u.semaphore.Acquire()
-			defer u.wg.Done()
-			err := u.Upload(url, metricsUpload)
-			if err != nil {
-				u.results <- UploadResult{Err: err}
+		metricsBatch = append(metricsBatch, m)
+		if len(metricsBatch) == batchSize {
+			for idx := 0; idx < 2; idx++ {
+				u.wg.Add(1)
+				go func() {
+					u.semaphore.Acquire()
+					defer u.wg.Done()
+					err := u.Upload(url, metricsBatch)
+					if err != nil {
+						u.results <- domain.UploadResult{Err: err}
+					}
+					u.semaphore.Release()
+				}()
 			}
-			u.semaphore.Release()
-		}()
+		}
 	}
+
+	if len(metricsBatch) > 0 {
+		err := u.Upload(url, metricsBatch)
+		if err != nil {
+			u.results <- domain.UploadResult{Err: err}
+		}
+	}
+
 	u.wg.Wait()
 }
 
@@ -130,7 +136,7 @@ func (u *Uploader) sendCounterMetrics() {
 			defer u.wg.Done()
 			err := u.Upload(url, metricsUpload)
 			if err != nil {
-				u.results <- UploadResult{Err: err}
+				u.results <- domain.UploadResult{Err: err}
 			}
 			u.semaphore.Release()
 		}()
