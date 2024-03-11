@@ -3,6 +3,9 @@ package uploader
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,6 +15,7 @@ import (
 	"github.com/VoevodinAnton/metrics/internal/agent/config"
 	"github.com/VoevodinAnton/metrics/internal/pkg/constants"
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
+	"github.com/VoevodinAnton/metrics/internal/pkg/semaphore"
 	"github.com/pkg/errors"
 	"github.com/sony/gobreaker"
 	"go.uber.org/zap"
@@ -20,6 +24,8 @@ import (
 const (
 	updateURLTemplate = "http://%s/updates"
 	clientTimeout     = 10 * time.Second
+	batchSize         = 5
+	metricsToSendSize = 1000
 )
 
 type Store interface {
@@ -29,9 +35,13 @@ type Store interface {
 }
 
 type Uploader struct {
-	cfg   *config.Config
-	cb    *gobreaker.CircuitBreaker
-	store Store
+	cfg           *config.Config
+	cb            *gobreaker.CircuitBreaker
+	semaphore     *semaphore.Semaphore
+	wg            *sync.WaitGroup
+	results       chan domain.UploadResult
+	metricsToSend chan domain.Metrics
+	store         Store
 	sync.Mutex
 }
 
@@ -43,69 +53,80 @@ func NewUploader(cfg *config.Config, store Store) *Uploader {
 		return counts.Requests > 20 && failureRatio >= 0.7
 	}
 	return &Uploader{
-		cfg:   cfg,
-		store: store,
-		cb:    gobreaker.NewCircuitBreaker(st),
+		cfg:           cfg,
+		store:         store,
+		semaphore:     semaphore.NewSemaphore(cfg.RateLimit),
+		wg:            &sync.WaitGroup{},
+		results:       make(chan domain.UploadResult),
+		metricsToSend: make(chan domain.Metrics, metricsToSendSize),
+		cb:            gobreaker.NewCircuitBreaker(st),
 	}
 }
 
 func (u *Uploader) Run() {
+	go u.sendMetrics()
+
 	ticker := time.NewTicker(u.cfg.ReportInterval)
-	for range ticker.C {
-		if err := u.sendGaugeMetrics(); err != nil {
-			zap.L().Error("sendGaugeMetrics", zap.Error(err))
-			continue
-		}
-		if err := u.sendCounterMetrics(); err != nil {
-			zap.L().Error("sendCounterMetrics", zap.Error(err))
-			continue
+
+	for {
+		select {
+		case <-ticker.C:
+			go u.report()
+		case r := <-u.results:
+			if r.Err != nil {
+				zap.L().Error("Error sending metrics", zap.Error(r.Err))
+			}
 		}
 	}
 }
 
-func (u *Uploader) sendGaugeMetrics() error {
-	metrics := u.store.GetGaugeMetrics()
-	metricsUpload := make([]domain.Metrics, 0, len(metrics))
-	for name, value := range metrics {
+func (u *Uploader) report() {
+	u.Lock()
+	defer u.Unlock()
+	gaugeMetrics := u.store.GetGaugeMetrics()
+	for name, value := range gaugeMetrics {
 		value := value
 		m := domain.Metrics{
 			ID:    name,
 			MType: domain.Gauge,
 			Value: &value,
 		}
-		metricsUpload = append(metricsUpload, m)
+		u.metricsToSend <- m
 	}
-	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
-	err := u.Upload(url, metricsUpload)
-	if err != nil {
-		return errors.Wrap(err, "upload gauge")
-	}
+	counterMetrics := u.store.GetCounterMetrics()
 
-	return nil
-}
-
-func (u *Uploader) sendCounterMetrics() error {
-	u.Lock()
-	defer u.Unlock()
-	metrics := u.store.GetCounterMetrics()
-	metricsUpload := make([]domain.Metrics, 0, len(metrics))
-	for name, value := range metrics {
+	for name, value := range counterMetrics {
 		value := value
 		m := domain.Metrics{
 			ID:    name,
 			MType: domain.Counter,
 			Delta: &value,
 		}
-		metricsUpload = append(metricsUpload, m)
+		u.metricsToSend <- m
 	}
+}
+
+func (u *Uploader) sendMetrics() {
+	metricsBatch := make([]domain.Metrics, 0)
 	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
-	err := u.Upload(url, metricsUpload)
-	if err != nil {
-		return errors.Wrap(err, "upload counter")
+	for idx := 0; idx < 2; idx++ {
+		go func() {
+			for metric := range u.metricsToSend {
+				metricsBatch = append(metricsBatch, metric)
+				if len(metricsBatch) == batchSize {
+					u.semaphore.Acquire()
+					err := u.Upload(url, metricsBatch)
+					if err != nil {
+						u.results <- domain.UploadResult{Err: err}
+					}
+					metricsBatch = make([]domain.Metrics, 0)
+					u.semaphore.Release()
+				}
+			}
+		}()
 	}
 
 	u.store.ResetCounter()
-	return nil
 }
 
 func (u *Uploader) Upload(url string, m []domain.Metrics) error {
@@ -131,6 +152,18 @@ func (u *Uploader) Upload(url string, m []domain.Metrics) error {
 		if err != nil {
 			return nil, errors.Wrap(err, "http.NewRequest")
 		}
+
+		if u.cfg.Key != "" {
+			h := hmac.New(sha256.New, []byte(u.cfg.Key))
+
+			h.Write(metricsJSON)
+			metricsHash := h.Sum(nil)
+
+			hashString := hex.EncodeToString(metricsHash)
+
+			req.Header.Add(constants.HashSHA256, hashString)
+		}
+
 		req.Header.Set(constants.ContentTypeHeader, constants.ContentTypeJSON)
 		req.Header.Set(constants.ContentEncodingHeader, constants.GzipEncoding)
 		resp, err := client.Do(req)

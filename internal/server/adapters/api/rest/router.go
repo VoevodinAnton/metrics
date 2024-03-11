@@ -41,6 +41,7 @@ func NewRouter(cfg *config.Config, service Service, mw middlewares.MiddlewareMan
 		middleware.StripSlashes,
 		middleware.Recoverer,
 		logging.WithLogging,
+		mw.ValidateHashHandler,
 	)
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", h.UpdateMetricHandler)

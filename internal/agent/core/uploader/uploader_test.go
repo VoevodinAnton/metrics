@@ -51,8 +51,6 @@ func NewServer(t *testing.T, expectedMetrics []domain.Metrics) *httptest.Server 
 			t.Errorf("Failed read body %v", err)
 		}
 
-		t.Log(string(body))
-
 		var metrics []domain.Metrics
 		if err := json.Unmarshal(body, &metrics); err != nil {
 			t.Fatalf("json.Unmarshal: %v", err)
@@ -62,7 +60,7 @@ func NewServer(t *testing.T, expectedMetrics []domain.Metrics) *httptest.Server 
 	}))
 }
 
-func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is test
+func TestUploader_sendCounterMetrics(t *testing.T) {
 	tests := []struct {
 		name            string
 		expectedMetrics []domain.Metrics
@@ -72,13 +70,37 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 			name: "test counter",
 			expectedMetrics: []domain.Metrics{
 				{
-					ID:    "TestCounter",
+					ID:    "TestCounter1",
 					MType: domain.Counter,
 					Delta: toInt64Pointer(1),
 				},
+				{
+					ID:    "TestCounter2",
+					MType: domain.Counter,
+					Delta: toInt64Pointer(2),
+				},
+				{
+					ID:    "TestCounter3",
+					MType: domain.Counter,
+					Delta: toInt64Pointer(3),
+				},
+				{
+					ID:    "TestCounter4",
+					MType: domain.Counter,
+					Delta: toInt64Pointer(4),
+				},
+				{
+					ID:    "TestCounter5",
+					MType: domain.Counter,
+					Delta: toInt64Pointer(5),
+				},
 			},
 			sendMetric: map[string]int64{
-				"TestCounter": 1,
+				"TestCounter1": 1,
+				"TestCounter2": 2,
+				"TestCounter3": 3,
+				"TestCounter4": 4,
+				"TestCounter5": 5,
 			},
 		},
 	}
@@ -89,6 +111,7 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 
 			var cfg = &config.Config{
 				ServerAddress: strings.TrimPrefix(svr.URL, "http://"),
+				RateLimit:     10,
 			}
 
 			var collector = &TestCollector{
@@ -96,16 +119,21 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 			}
 
 			u := NewUploader(cfg, collector)
+			u.report()
 
-			err := u.sendCounterMetrics()
-			if err != nil {
-				t.Error(err)
+			u.sendMetrics()
+			select {
+			case r := <-u.results:
+				if r.Err != nil {
+					t.Error(r.Err)
+				}
+			default:
 			}
 		})
 	}
 }
 
-func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is test
+func TestUploader_sendGaugeMetrics(t *testing.T) {
 	tests := []struct {
 		name            string
 		expectedMetrics []domain.Metrics
@@ -132,6 +160,7 @@ func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is tes
 
 			var cfg = &config.Config{
 				ServerAddress: strings.TrimPrefix(svr.URL, "http://"),
+				RateLimit:     10,
 			}
 
 			var collector = &TestCollector{
@@ -140,9 +169,13 @@ func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is tes
 
 			u := NewUploader(cfg, collector)
 
-			err := u.sendGaugeMetrics()
-			if err != nil {
-				t.Error(err)
+			go u.sendMetrics()
+			select {
+			case r := <-u.results:
+				if r.Err != nil {
+					t.Error(r.Err)
+				}
+			default:
 			}
 		})
 	}

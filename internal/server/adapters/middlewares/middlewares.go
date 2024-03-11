@@ -1,7 +1,11 @@
 package middlewares
 
 import (
+	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"strings"
@@ -13,13 +17,17 @@ import (
 type MiddlewareManager interface {
 	GzipCompressHandle(next http.Handler) http.Handler
 	GzipDecompressHandle(next http.Handler) http.Handler
+	ValidateHashHandler(next http.Handler) http.Handler
 }
 
 type middlewareManager struct {
+	HashSecretKey string
 }
 
-func NewMiddlewareManager() *middlewareManager {
-	return &middlewareManager{}
+func NewMiddlewareManager(hashSecretKey string) *middlewareManager {
+	return &middlewareManager{
+		HashSecretKey: hashSecretKey,
+	}
 }
 
 func (mw *middlewareManager) GzipCompressHandle(next http.Handler) http.Handler {
@@ -69,6 +77,33 @@ func (mw *middlewareManager) GzipDecompressHandle(next http.Handler) http.Handle
 			}()
 
 			r.Body = http.MaxBytesReader(w, reader, http.DefaultMaxHeaderBytes)
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (mw *middlewareManager) ValidateHashHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get(constants.HashSHA256) != "" {
+			jsonMetric, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			r.Body = io.NopCloser(bytes.NewBuffer(jsonMetric))
+			h := hmac.New(sha256.New, []byte(mw.HashSecretKey))
+
+			h.Write(jsonMetric)
+			metricsHash := h.Sum(nil)
+
+			strHash := hex.EncodeToString(metricsHash)
+
+			if strHash != r.Header.Get(constants.HashSHA256) {
+				http.Error(w, "hash mismatch", http.StatusBadRequest)
+				return
+			}
 		}
 
 		next.ServeHTTP(w, r)
