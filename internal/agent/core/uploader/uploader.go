@@ -15,6 +15,7 @@ import (
 	"github.com/VoevodinAnton/metrics/internal/agent/config"
 	"github.com/VoevodinAnton/metrics/internal/pkg/constants"
 	"github.com/VoevodinAnton/metrics/internal/pkg/domain"
+	"github.com/VoevodinAnton/metrics/internal/pkg/semaphore"
 	"github.com/pkg/errors"
 	"github.com/sony/gobreaker"
 	"go.uber.org/zap"
@@ -31,10 +32,17 @@ type Store interface {
 	ResetCounter()
 }
 
+type UploadResult struct {
+	Err error
+}
+
 type Uploader struct {
-	cfg   *config.Config
-	cb    *gobreaker.CircuitBreaker
-	store Store
+	cfg       *config.Config
+	cb        *gobreaker.CircuitBreaker
+	semaphore *semaphore.Semaphore
+	wg        *sync.WaitGroup
+	results   chan UploadResult
+	store     Store
 	sync.Mutex
 }
 
@@ -46,27 +54,32 @@ func NewUploader(cfg *config.Config, store Store) *Uploader {
 		return counts.Requests > 20 && failureRatio >= 0.7
 	}
 	return &Uploader{
-		cfg:   cfg,
-		store: store,
-		cb:    gobreaker.NewCircuitBreaker(st),
+		cfg:       cfg,
+		store:     store,
+		semaphore: semaphore.NewSemaphore(cfg.RateLimit),
+		wg:        &sync.WaitGroup{},
+		results:   make(chan UploadResult),
+		cb:        gobreaker.NewCircuitBreaker(st),
 	}
 }
 
 func (u *Uploader) Run() {
 	ticker := time.NewTicker(u.cfg.ReportInterval)
 	for range ticker.C {
-		if err := u.sendGaugeMetrics(); err != nil {
-			zap.L().Error("sendGaugeMetrics", zap.Error(err))
-			continue
-		}
-		if err := u.sendCounterMetrics(); err != nil {
-			zap.L().Error("sendCounterMetrics", zap.Error(err))
-			continue
+		u.sendGaugeMetrics()
+		u.sendCounterMetrics()
+
+		select {
+		case r := <-u.results:
+			if r.Err != nil {
+				zap.L().Error("Error sending metrics", zap.Error(r.Err))
+			}
+		default:
 		}
 	}
 }
 
-func (u *Uploader) sendGaugeMetrics() error {
+func (u *Uploader) sendGaugeMetrics() {
 	metrics := u.store.GetGaugeMetrics()
 	metricsUpload := make([]domain.Metrics, 0, len(metrics))
 	for name, value := range metrics {
@@ -79,15 +92,23 @@ func (u *Uploader) sendGaugeMetrics() error {
 		metricsUpload = append(metricsUpload, m)
 	}
 	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
-	err := u.Upload(url, metricsUpload)
-	if err != nil {
-		return errors.Wrap(err, "upload gauge")
-	}
 
-	return nil
+	for idx := 0; idx < 2; idx++ {
+		u.wg.Add(1)
+		go func() {
+			u.semaphore.Acquire()
+			defer u.wg.Done()
+			err := u.Upload(url, metricsUpload)
+			if err != nil {
+				u.results <- UploadResult{Err: err}
+			}
+			u.semaphore.Release()
+		}()
+	}
+	u.wg.Wait()
 }
 
-func (u *Uploader) sendCounterMetrics() error {
+func (u *Uploader) sendCounterMetrics() {
 	u.Lock()
 	defer u.Unlock()
 	metrics := u.store.GetCounterMetrics()
@@ -102,13 +123,21 @@ func (u *Uploader) sendCounterMetrics() error {
 		metricsUpload = append(metricsUpload, m)
 	}
 	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
-	err := u.Upload(url, metricsUpload)
-	if err != nil {
-		return errors.Wrap(err, "upload counter")
+	for idx := 0; idx < 2; idx++ {
+		u.wg.Add(1)
+		go func() {
+			u.semaphore.Acquire()
+			defer u.wg.Done()
+			err := u.Upload(url, metricsUpload)
+			if err != nil {
+				u.results <- UploadResult{Err: err}
+			}
+			u.semaphore.Release()
+		}()
 	}
 
 	u.store.ResetCounter()
-	return nil
+	u.wg.Wait()
 }
 
 func (u *Uploader) Upload(url string, m []domain.Metrics) error {

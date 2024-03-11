@@ -89,6 +89,7 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 
 			var cfg = &config.Config{
 				ServerAddress: strings.TrimPrefix(svr.URL, "http://"),
+				RateLimit:     10,
 			}
 
 			var collector = &TestCollector{
@@ -97,9 +98,13 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 
 			u := NewUploader(cfg, collector)
 
-			err := u.sendCounterMetrics()
-			if err != nil {
-				t.Error(err)
+			u.sendCounterMetrics()
+			select {
+			case r := <-u.results:
+				if r.Err != nil {
+					t.Error(r.Err)
+				}
+			default:
 			}
 		})
 	}
@@ -132,6 +137,7 @@ func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is tes
 
 			var cfg = &config.Config{
 				ServerAddress: strings.TrimPrefix(svr.URL, "http://"),
+				RateLimit:     10,
 			}
 
 			var collector = &TestCollector{
@@ -140,9 +146,13 @@ func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is tes
 
 			u := NewUploader(cfg, collector)
 
-			err := u.sendGaugeMetrics()
-			if err != nil {
-				t.Error(err)
+			u.sendGaugeMetrics()
+			select {
+			case r := <-u.results:
+				if r.Err != nil {
+					t.Error(r.Err)
+				}
+			default:
 			}
 		})
 	}
