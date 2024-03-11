@@ -51,8 +51,6 @@ func NewServer(t *testing.T, expectedMetrics []domain.Metrics) *httptest.Server 
 			t.Errorf("Failed read body %v", err)
 		}
 
-		t.Log(string(body))
-
 		var metrics []domain.Metrics
 		if err := json.Unmarshal(body, &metrics); err != nil {
 			t.Fatalf("json.Unmarshal: %v", err)
@@ -72,13 +70,37 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 			name: "test counter",
 			expectedMetrics: []domain.Metrics{
 				{
-					ID:    "TestCounter",
+					ID:    "TestCounter1",
 					MType: domain.Counter,
 					Delta: toInt64Pointer(1),
 				},
+				{
+					ID:    "TestCounter2",
+					MType: domain.Counter,
+					Delta: toInt64Pointer(2),
+				},
+				{
+					ID:    "TestCounter3",
+					MType: domain.Counter,
+					Delta: toInt64Pointer(3),
+				},
+				{
+					ID:    "TestCounter4",
+					MType: domain.Counter,
+					Delta: toInt64Pointer(4),
+				},
+				{
+					ID:    "TestCounter5",
+					MType: domain.Counter,
+					Delta: toInt64Pointer(5),
+				},
 			},
 			sendMetric: map[string]int64{
-				"TestCounter": 1,
+				"TestCounter1": 1,
+				"TestCounter2": 2,
+				"TestCounter3": 3,
+				"TestCounter4": 4,
+				"TestCounter5": 5,
 			},
 		},
 	}
@@ -97,6 +119,7 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 			}
 
 			u := NewUploader(cfg, collector)
+			u.report()
 
 			u.sendMetrics()
 			select {
@@ -146,7 +169,7 @@ func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is tes
 
 			u := NewUploader(cfg, collector)
 
-			u.sendMetrics()
+			go u.sendMetrics()
 			select {
 			case r := <-u.results:
 				if r.Err != nil {

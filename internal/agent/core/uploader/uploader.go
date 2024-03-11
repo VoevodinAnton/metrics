@@ -64,17 +64,18 @@ func NewUploader(cfg *config.Config, store Store) *Uploader {
 }
 
 func (u *Uploader) Run() {
-	ticker := time.NewTicker(u.cfg.ReportInterval)
-	for range ticker.C {
-		go u.report()
-		go u.sendMetrics()
+	go u.sendMetrics()
 
+	ticker := time.NewTicker(u.cfg.ReportInterval)
+
+	for {
 		select {
+		case <-ticker.C:
+			go u.report()
 		case r := <-u.results:
 			if r.Err != nil {
 				zap.L().Error("Error sending metrics", zap.Error(r.Err))
 			}
-		default:
 		}
 	}
 }
@@ -108,10 +109,8 @@ func (u *Uploader) report() {
 func (u *Uploader) sendMetrics() {
 	metricsBatch := make([]domain.Metrics, 0)
 	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
-	for idx := 0; idx < 10; idx++ {
-		u.wg.Add(1)
+	for idx := 0; idx < 2; idx++ {
 		go func() {
-			defer u.wg.Done()
 			for metric := range u.metricsToSend {
 				metricsBatch = append(metricsBatch, metric)
 				if len(metricsBatch) == batchSize {
@@ -120,21 +119,13 @@ func (u *Uploader) sendMetrics() {
 					if err != nil {
 						u.results <- domain.UploadResult{Err: err}
 					}
-					u.semaphore.Release()
 					metricsBatch = make([]domain.Metrics, 0)
+					u.semaphore.Release()
 				}
 			}
 		}()
 	}
 
-	if len(metricsBatch) > 0 {
-		err := u.Upload(url, metricsBatch)
-		if err != nil {
-			u.results <- domain.UploadResult{Err: err}
-		}
-	}
-
-	u.wg.Wait()
 	u.store.ResetCounter()
 }
 
