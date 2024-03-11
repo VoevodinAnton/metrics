@@ -60,7 +60,7 @@ func NewServer(t *testing.T, expectedMetrics []domain.Metrics) *httptest.Server 
 	}))
 }
 
-func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is test
+func TestUploader_sendCounterMetrics(t *testing.T) {
 	tests := []struct {
 		name            string
 		expectedMetrics []domain.Metrics
@@ -133,7 +133,7 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 	}
 }
 
-func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is test
+func TestUploader_sendGaugeMetrics(t *testing.T) {
 	tests := []struct {
 		name            string
 		expectedMetrics []domain.Metrics
