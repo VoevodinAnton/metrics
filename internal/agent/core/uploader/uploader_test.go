@@ -98,7 +98,7 @@ func TestUploader_sendCounterMetrics(t *testing.T) { //nolint: dupl // this is t
 
 			u := NewUploader(cfg, collector)
 
-			u.sendCounterMetrics()
+			u.sendMetrics()
 			select {
 			case r := <-u.results:
 				if r.Err != nil {
@@ -146,7 +146,7 @@ func TestUploader_sendGaugeMetrics(t *testing.T) { //nolint: dupl // this is tes
 
 			u := NewUploader(cfg, collector)
 
-			u.sendGaugeMetrics()
+			u.sendMetrics()
 			select {
 			case r := <-u.results:
 				if r.Err != nil {

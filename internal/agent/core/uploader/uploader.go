@@ -34,12 +34,13 @@ type Store interface {
 }
 
 type Uploader struct {
-	cfg       *config.Config
-	cb        *gobreaker.CircuitBreaker
-	semaphore *semaphore.Semaphore
-	wg        *sync.WaitGroup
-	results   chan domain.UploadResult
-	store     Store
+	cfg           *config.Config
+	cb            *gobreaker.CircuitBreaker
+	semaphore     *semaphore.Semaphore
+	wg            *sync.WaitGroup
+	results       chan domain.UploadResult
+	metricsToSend chan domain.Metrics
+	store         Store
 	sync.Mutex
 }
 
@@ -51,20 +52,21 @@ func NewUploader(cfg *config.Config, store Store) *Uploader {
 		return counts.Requests > 20 && failureRatio >= 0.7
 	}
 	return &Uploader{
-		cfg:       cfg,
-		store:     store,
-		semaphore: semaphore.NewSemaphore(cfg.RateLimit),
-		wg:        &sync.WaitGroup{},
-		results:   make(chan domain.UploadResult),
-		cb:        gobreaker.NewCircuitBreaker(st),
+		cfg:           cfg,
+		store:         store,
+		semaphore:     semaphore.NewSemaphore(cfg.RateLimit),
+		wg:            &sync.WaitGroup{},
+		results:       make(chan domain.UploadResult),
+		metricsToSend: make(chan domain.Metrics, 1000),
+		cb:            gobreaker.NewCircuitBreaker(st),
 	}
 }
 
 func (u *Uploader) Run() {
 	ticker := time.NewTicker(u.cfg.ReportInterval)
 	for range ticker.C {
-		go u.sendGaugeMetrics()
-		go u.sendCounterMetrics()
+		go u.report()
+		go u.sendMetrics()
 
 		select {
 		case r := <-u.results:
@@ -76,32 +78,53 @@ func (u *Uploader) Run() {
 	}
 }
 
-func (u *Uploader) sendGaugeMetrics() {
-	metrics := u.store.GetGaugeMetrics()
-	metricsBatch := make([]domain.Metrics, 0)
-	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
-	for name, value := range metrics {
+func (u *Uploader) report() {
+	u.Lock()
+	defer u.Unlock()
+	gaugeMetrics := u.store.GetGaugeMetrics()
+	for name, value := range gaugeMetrics {
 		value := value
 		m := domain.Metrics{
 			ID:    name,
 			MType: domain.Gauge,
 			Value: &value,
 		}
-		metricsBatch = append(metricsBatch, m)
-		if len(metricsBatch) == batchSize {
-			for idx := 0; idx < 2; idx++ {
-				u.wg.Add(1)
-				go func() {
+		u.metricsToSend <- m
+	}
+	counterMetrics := u.store.GetCounterMetrics()
+
+	for name, value := range counterMetrics {
+		value := value
+		m := domain.Metrics{
+			ID:    name,
+			MType: domain.Counter,
+			Delta: &value,
+		}
+		u.metricsToSend <- m
+	}
+}
+
+func (u *Uploader) sendMetrics() {
+	metricsBatch := make([]domain.Metrics, 0)
+	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
+	for idx := 0; idx < 10; idx++ {
+		u.wg.Add(1)
+		go func() {
+			defer u.wg.Done()
+			for metric := range u.metricsToSend {
+				metricsBatch = append(metricsBatch, metric)
+				if len(metricsBatch) == batchSize {
 					u.semaphore.Acquire()
-					defer u.wg.Done()
 					err := u.Upload(url, metricsBatch)
 					if err != nil {
 						u.results <- domain.UploadResult{Err: err}
 					}
 					u.semaphore.Release()
-				}()
+					metricsBatch = make([]domain.Metrics, 0)
+				}
+
 			}
-		}
+		}()
 	}
 
 	if len(metricsBatch) > 0 {
@@ -112,38 +135,7 @@ func (u *Uploader) sendGaugeMetrics() {
 	}
 
 	u.wg.Wait()
-}
-
-func (u *Uploader) sendCounterMetrics() {
-	u.Lock()
-	defer u.Unlock()
-	metrics := u.store.GetCounterMetrics()
-	metricsUpload := make([]domain.Metrics, 0, len(metrics))
-	for name, value := range metrics {
-		value := value
-		m := domain.Metrics{
-			ID:    name,
-			MType: domain.Counter,
-			Delta: &value,
-		}
-		metricsUpload = append(metricsUpload, m)
-	}
-	url := fmt.Sprintf(updateURLTemplate, u.cfg.ServerAddress)
-	for idx := 0; idx < 2; idx++ {
-		u.wg.Add(1)
-		go func() {
-			u.semaphore.Acquire()
-			defer u.wg.Done()
-			err := u.Upload(url, metricsUpload)
-			if err != nil {
-				u.results <- domain.UploadResult{Err: err}
-			}
-			u.semaphore.Release()
-		}()
-	}
-
 	u.store.ResetCounter()
-	u.wg.Wait()
 }
 
 func (u *Uploader) Upload(url string, m []domain.Metrics) error {
