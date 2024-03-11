@@ -25,6 +25,7 @@ const (
 	updateURLTemplate = "http://%s/updates"
 	clientTimeout     = 10 * time.Second
 	batchSize         = 5
+	metricsToSendSize = 1000
 )
 
 type Store interface {
@@ -57,7 +58,7 @@ func NewUploader(cfg *config.Config, store Store) *Uploader {
 		semaphore:     semaphore.NewSemaphore(cfg.RateLimit),
 		wg:            &sync.WaitGroup{},
 		results:       make(chan domain.UploadResult),
-		metricsToSend: make(chan domain.Metrics, 1000),
+		metricsToSend: make(chan domain.Metrics, metricsToSendSize),
 		cb:            gobreaker.NewCircuitBreaker(st),
 	}
 }
@@ -122,7 +123,6 @@ func (u *Uploader) sendMetrics() {
 					u.semaphore.Release()
 					metricsBatch = make([]domain.Metrics, 0)
 				}
-
 			}
 		}()
 	}
